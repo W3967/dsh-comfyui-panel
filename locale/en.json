@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Krea 2 Studio",
-    "description": "Generate images with a local Krea 2 ComfyUI: pick the quantized UNet, LoRA and sampler, tune size, steps and seed, and preview the result in a sidebar panel."
+    "title": "ComfyUI Studio",
+    "description": "A generic ComfyUI front end for DeepSeek Harness: import any API-format workflow, get a parameter form generated from its graph, and generate. Ships Krea 2 text-to-image and style-reference presets, plus agent tools."
   }
 }

@@ -1,94 +1,46 @@
-# Krea 2 Studio · DeepSeek Harness plugin
+# ComfyUI Studio · DeepSeek Harness plugin
 
 [![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
 
-Plug a local **Krea 2** ComfyUI into DeepSeek Harness: one click in the sidebar, pick the model, write a prompt, tune a few knobs, get an image.
-
-Generating with a local ComfyUI usually means switching to a browser, editing parameters in a node graph, then switching back. This plugin folds all of that into the DSH sidebar: the parameter panel stays put and the images land next to your conversation.
-
 [中文](README.md) | English
 
-![Krea 2 panel](docs/panel.png)
+Plug a local **ComfyUI** into DeepSeek Harness: import any API-format workflow, get a parameter form generated from the graph, and generate from the sidebar.
+
+Running ComfyUI normally means switching to a browser, editing parameters in a node graph, then switching back. This plugin folds all of that into the DSH sidebar: the form stays put and the images land next to your conversation.
+
+Two **Krea 2** presets ship built in (text-to-image and style reference), so it works out of the box; everything else works as soon as ComfyUI can run it.
+
+![Panel](docs/panel.png)
 
 ---
 
+## It is generic, not Krea 2 specific
+
+The core is not a particular model, it is **parameter discovery**: ComfyUI's own `/object_info` is used as metadata to translate any workflow graph into a form.
+
+| Where the information comes from | What it decides |
+|---|---|
+| `/object_info` | Whether an input becomes a dropdown, slider, number box or text area; its range; its choices |
+| The graph's links | Which of two `CLIPTextEncode` nodes is the positive prompt and which is the negative |
+| A ~60-line semantic rule table | Readable labels and grouping: "Prompt", "Steps", "UNet" |
+| Equal-value folding | The `width` that both `EmptyLatentImage` and `ModelSamplingFlux` carry becomes one control |
+
+A node class the rules do not recognise is not an error — it degrades to a generic `Class · field` control. Install whatever custom nodes you like.
+
 ## Features
 
-- **Sidebar entry + standalone panel** — runs beside the chat instead of inside it.
-- **Model pickers** — scans `<ComfyUI>/models` and lets you switch the quantized UNet (including GGUF), text encoder, VAE and LoRA from dropdowns.
-- **Two modes**
-  - Text to image (`txt2img`): generate from the prompt alone.
-  - Style reference (`style_ref`): hand it one image and carry over its style and mood; the last result can be reused as the reference in one click.
-- **Tunable** — size presets or custom width/height, steps, CFG, seed (empty means random), sampler, LoRA strength, and the `ModelSamplingFlux` max/base shift.
-- **Settings persist** — ComfyUI URL and root directory live in `$DSH_HOME/krea2-panel/settings.json` and survive a restart.
-- **Job-based generation** — submit returns immediately, the panel polls progress, cancellation works, and finished images can be opened full size or copied as a path.
-- **Follows the host theme** — only `--dsw-alias-*` design tokens are used, so light and dark themes both look native.
-- **Agent tool** — `krea2_generate` lets the model generate an image and get the resulting path, sharing the exact same job queue as the panel.
+- **Import any workflow**: paste the JSON from ComfyUI's "Save (API Format)" and a form appears.
+- **Krea 2 built in**: text-to-image and style-reference presets, ready on install.
+- **Two entry points**: click in the panel, or let the model call the agent tool; both share one job queue.
+- **Automatic parameter detection**: prompts, seed, steps, CFG, size, models, LoRA strength, image inputs.
+- **Job-based generation**: submit returns immediately, the panel polls progress, cancellation works, results open full size.
+- **Follows the host theme**: only `--dsw-alias-*` design tokens.
 
 ## Requirements
 
-1. **ComfyUI** running (default `http://127.0.0.1:8188`).
-2. **GPU**: 8 GB of VRAM runs the Q2_K quant (1024² at 8 steps takes about 70 s on an RTX 5060 Laptop); 16 GB and up can take a larger quant.
-3. **The nodes and models Krea 2 needs** already installed. The panel drives this graph:
-   - `UnetLoaderGGUF` (quantized GGUF UNet)
-   - `CLIPLoader` (`type: krea2`)
-   - `VAELoader`
-   - `LoraLoaderModelOnly` (style-reference LoRA)
-   - `ModelSamplingFlux` / `KSampler` (text to image)
-   - `TextEncodeQwenImageEditPlus` / `SamplerCustomAdvanced` (style reference)
-
-   The graph lives in `lib/comfy.js` as plain readable objects. If your node names or wiring differ, edit `buildTxt2Img` / `buildStyleRef` and nothing else.
-
-## Which one: this plugin vs the MCP server
-
-The same ComfyUI graph has two front ends. **Install one, not both:**
-
-- **This plugin (`dsh-krea2-panel`)** — DeepSeek Harness only, ships a sidebar panel *and* an agent tool.
-- **`krea2-mcp`** — a plain MCP server: tools only, no UI.
-
-Both drive the same Krea 2 weights (same UNet / text encoder / VAE / LoRA). What differs is how you reach them:
-
-| | This plugin | krea2-mcp |
-|---|---|---|
-| Shape | Cordis bundle: panel + tool | MCP server: tool only |
-| Available to | DeepSeek Harness only | Any MCP client (Claude Desktop, Cursor, DSH, …) |
-| For humans | ✅ tweak and preview in a panel, browse this session's results | ❌ only by asking the model |
-| For models | `krea2_generate` | `generate_image` (shown as `mcp__krea2__generate_image` in DSH; other clients prefix differently) |
-| Choosing a model | dropdown over `models/` | one filename via env var |
-| Tunable | steps, CFG, LoRA strength, sampler, ModelSamplingFlux shifts, size presets | prompt, mode, width, height, seed |
-| Progress and cancel | ✅ job queue, polling, cancellable | ❌ one call blocks until done |
-| Configuration | panel settings → `$DSH_HOME/krea2-panel/settings.json` | env vars / CLI flags (`env` in the DSH patch) |
-| Extra dependencies | none (graph is embedded) | no npm dependencies, Node ≥ 18 |
-
-**Inside DeepSeek Harness, the plugin is enough — don't install both.** It is essentially a superset: anything the tool can do the panel can do, and the reverse. The MCP server's only extra is a `comfyui_status` tool, which the plugin covers with the status badge in the panel header and `GET /krea2/status` (VRAM, version, model inventory).
-
-### When the MCP server is still the right pick
-
-- You want **one config shared across several MCP clients** (Cursor, Claude Desktop, DSH): one JSON block does it.
-- You **don't want a UI**, or you run headless / remotely with no browser.
-- Your DSH version cannot install Cordis bundles.
-
-### What happens if you install both
-
-They don't technically conflict (different tool names, separate processes), but in practice both you and the model get confused:
-
-- two near-identical tools appear in the list and the model picks either one at random;
-- each path submits its own jobs to ComfyUI, so running both at once fights over 8 GB of VRAM;
-- the model filename and URL are configured in two places, so changing one and forgetting the other shows up as "the panel works but the model can't generate" — miserable to diagnose.
-
-If you already had the MCP version installed, delete or comment out this block in `cordis.patch.yml`:
-
-```yaml
-# Disable the MCP version; `krea2_generate` from the plugin covers it.
-# - insert:
-#     - id: mcp-krea2
-#       name: '@deepseek-ai/dsh-mcp-client'
-#       config:
-#         serverName: krea2
-#         transport: stdio
-#         command: 'node'
-#         args: ['D:/path/to/krea2-mcp/src/index.js']
-```
+1. **ComfyUI** running (default `http://127.0.0.1:8188`), version 0.26.0 or newer recommended.
+2. **GPU**: whatever your workflow needs. The built-in Krea 2 preset runs Q2_K on 8 GB of VRAM (1024² at 8 steps, about 70 s).
+3. **A workflow that already works**: confirm it produces an image in the ComfyUI web UI first.
 
 ## Install
 
@@ -98,7 +50,7 @@ If you already had the MCP version installed, delete or comment out this block i
 git clone https://github.com/W3967/dsh-krea2-panel.git
 ```
 
-In Harness, run `plugin_manager` with `install_bundle` and pass the absolute path of that directory. A local directory install links the checkout, so code changes take effect after a restart of the session.
+In Harness, run `plugin_manager` with `install_bundle` and pass the absolute path of that directory.
 
 ### Option 2: mount it into the profile
 
@@ -117,129 +69,150 @@ Put the package in the profile's `node_modules` and add one row to `cordis.patch
 
 ## Configure
 
-After installing, a ✦ icon appears in the sidebar. Open it and expand «Settings» at the bottom:
+A ✦ icon appears in the sidebar. Expand «Settings» at the bottom:
 
 | Field | Meaning |
 |---|---|
 | ComfyUI URL | Default `http://127.0.0.1:8188`; reverse-proxied paths such as `http://host/comfy` also work. |
-| ComfyUI directory | The folder containing `models/`, `input/` and `output/`. **Required**, otherwise the model dropdowns stay empty and generated images cannot be read back. |
-| Sampler | `euler` / `euler_ancestral` / `dpmpp_2m` / `dpmpp_2m_sde` / `dpmpp_sde` / `heun` / `lcm`. |
+| ComfyUI directory | The folder containing `models/`, `input/` and `output/`. **Required**, otherwise generated images cannot be read back and input images cannot be copied in. |
 
-Everything else (models, size, steps, CFG, LoRA strength) saves automatically, with a brief «saved» note in the footer.
+## Quick start
 
-## Usage
+1. Pick **Krea 2 · Text to image** in the workflow dropdown.
+2. Write a prompt (English works best).
+3. Make sure the UNet dropdown resolved to a file.
+4. Press Generate (or `Ctrl/Cmd + Enter`).
+5. The image appears on the right; click it for full size, the thumbnail strip walks back through this session.
 
-1. Pick a mode: text to image or style reference.
-2. Write the prompt (English works best; Chinese is recognized too).
-3. Choose the UNet — the other dropdowns follow whatever files are available.
-4. Tune size and steps. On an RTX 5060 8 GB, 1024² at 8 steps takes about 70 seconds; style reference takes longer because the reference image has to be encoded.
-5. Press Generate (or `Ctrl/Cmd + Enter`).
-6. The result appears on the right. Click it for full size; the thumbnail strip walks back through this session's results.
+Parameter values save automatically and come back next time.
 
-## Changing models
+## Import your own workflow
 
-All four dropdowns come from a **live scan** of ComfyUI's `models/` folder — no code change, no reinstall:
+### 1. Export from ComfyUI
 
-1. drop the file into the right directory;
-2. press ↻ at the top right of the panel;
-3. pick it from the dropdown (it saves automatically).
+Build the graph, confirm it generates, then use **Workflow → Save (API Format)**.
 
-| Kind | Location |
+> Only **API Format** is accepted. The UI-format export (the file with `nodes` / `links` arrays) is for the browser and cannot be parsed here.
+
+### 2. Paste it into the panel
+
+Press **+** next to the workflow dropdown, give it a name, paste the whole JSON, hit Import.
+
+### 3. The form builds itself
+
+Parameters are discovered immediately. For the Krea 2 text-to-image preset, 18 parameters come back in four groups:
+
+```
+Prompt    Prompt · Negative prompt
+Size      Width · Height · Batch size      (width and height each fold two nodes)
+Sampling  Seed · Steps · CFG · Sampler · Scheduler · Denoise · Shift max/base
+Models    UNet · Text encoder · CLIP type · VAE · LoRA
+```
+
+Image inputs (`LoadImage`) become path boxes with a «Use latest» button that fills in the image you just generated.
+
+### 4. What about parameters it cannot name?
+
+They land in «Other» labelled like `SomeNode · some_field`, and the control still works. Two ways to improve that:
+
+- add one matching rule to `RULES` in [lib/workflows.js](lib/workflows.js)
+- or leave it — functionality is unaffected
+
+## How parameters are found
+
+Four steps, all in `discoverParams()` in [lib/workflows.js](lib/workflows.js):
+
+1. **Skip links**: `inputs: { model: ["7", 0] }` references another node, it is not a parameter.
+2. **Read the declaration**: the `[type, options]` pair from `/object_info` picks the widget, range and choices.
+3. **Attach semantics**: a "class + field name" rule table turns `KSampler.steps` into "Steps".
+4. **Fold equal values**: inputs with the same semantics and the same value share one control that writes to every owner.
+
+Positive and negative prompts are not guessed: the algorithm follows the sampler's `positive` / `negative` links and labels the nodes they point at.
+
+## For the agent
+
+Two agent tools are registered:
+
+| Tool | Purpose |
 |---|---|
-| UNet / main model | `models/diffusion_models/` (or `unet/`) |
-| Text encoder | `models/text_encoders/` |
-| VAE | `models/vae/` |
-| LoRA | `models/loras/` |
+| `krea2_workflows` | List workflows and their parameters (id, label, control, value, choices) |
+| `krea2_generate` | Submit a generation, wait for the image, return its absolute path |
 
-### Both UNet formats are picked up automatically
+The model looks up parameter names first, then submits:
 
-| File | Loader node |
-|---|---|
-| `*.gguf` (community quant) | `UnetLoaderGGUF` |
-| `*.safetensors` (official full precision) | `UNETLoader` |
+```json
+{
+  "workflow": "krea2-txt2img",
+  "values": { "4.text": "a red fox in snow", "8.steps": 12, "6.width": 768 }
+}
+```
 
-The extension decides the loader, so moving from Q2_K to Q4_K, or switching to the official fp16 file, is just a dropdown change.
-
-### What you can and cannot swap
-
-| Change | OK | Note |
-|---|---|---|
-| Different quant of the same architecture (Q2_K → Q4_K → Q8_0) | ✅ | pick it |
-| Official `.safetensors` full-precision UNet | ✅ | switches to `UNETLoader` automatically |
-| Different VAE | ✅ | must match the architecture (Krea 2 uses `qwen_image_vae`) |
-| Add or change a style LoRA | ✅ | **single slot**, no stacking multiple LoRAs |
-| Different text encoder | ⚠️ | must be the **official FP8 Qwen3VL**; the GGUF variant fails with a `12x2560` feature-dimension error |
-| A different architecture (Flux, SDXL, …) | ❌ | the node graph differs — see below |
-
-**Why the last row fails:** the graph is fixed — `ModelSamplingFlux` + `KSampler`, `CLIPLoader` with `type: krea2`, and `TextEncodeQwenImageEditPlus` in style-reference mode. Those are Krea 2 / Qwen-Image specific nodes, so a different architecture means a different graph.
-
-To support another architecture, rewrite `buildTxt2Img` / `buildStyleRef` in [lib/comfy.js](lib/comfy.js). Queueing, validation, UI and the tool all stay untouched.
-
-## For the agent: `krea2_generate`
-
-> If you also installed `krea2-mcp`, read the «Which one» section first — the two tools will compete.
-
-Besides the panel, the plugin registers one agent tool. It goes through the **same job queue** (`jobs.start`) and only differs by waiting: a model cannot poll a job id, so the tool holds the call open until the image exists.
-
-| Parameter | Meaning |
-|---|---|
-| `prompt` | What to draw. May be an empty string in `style_ref` mode. |
-| `mode` | `txt2img` (default) / `style_ref` |
-| `reference_image` | Required for `style_ref`; absolute path to the reference |
-| `model` | Optional temporary UNet filename override |
-| `lora` / `lora_strength` | Optional LoRA override; `lora: ""` means none for this call |
-| `width` / `height` / `steps` / `seed` | Optional; omitted values use the panel settings |
-
-Returns `{ path, paths, seed, width, height, steps, elapsed_ms, job_id }`, and the result card shows the image path.
+Keys are the `params[].id` values returned by `krea2_workflows`.
 
 How it relates to the panel:
 
-- **Same validation and clamping** — `width: 100` from the tool is clamped to 256 exactly like the UI.
-- **Serial execution** (`isConcurrencySafe: false`): two prompts at once fight over 8 GB of VRAM, and ComfyUI's `/interrupt` is global.
+- **Same validation and clamping** — there is no second code path.
+- **Serial execution** (`isConcurrencySafe: false`): concurrent runs fight over VRAM, and ComfyUI's `/interrupt` is global.
 - **Cancellable** — an interrupted model call releases the wait through `exec.signal`.
 - **11-minute tool timeout**, a little longer than the 10-minute job cap, so you get "job failed" rather than "tool timed out".
+
+## Relationship to krea2-mcp
+
+Same backend, two front ends. **Install one, not both:**
+
+- **This plugin** — DeepSeek Harness only, panel plus tools.
+- **`krea2-mcp`** — a plain MCP server with tools only, usable from any MCP client.
+
+Installing both leaves two near-identical capabilities in the tool list, the model picks either at random, and both fight over the GPU. Inside DSH the plugin is enough.
 
 ## Architecture
 
 ```
 krea2-panel/
-├── index.js              Host half: registers the /krea2 routes
+├── index.js              Host half: wires settings, presets, routes, tools
 ├── lib/
-│   ├── comfy.js          ComfyUI HTTP client + both workflow graphs
-│   ├── settings.js       defaults, validation, persistence
-│   ├── jobs.js           job state machine (queued→running→done/error/canceled)
-│   ├── routes.js         the /krea2/* HTTP surface and image path checks
-│   └── tool.js           the krea2_generate agent tool
-├── client.js             Client half: sidebar entry + main panel
+│   ├── comfy.js          ComfyUI HTTP client (contains no node graph at all)
+│   ├── workflows.js      Parameter discovery, graph merging, presets, storage
+│   ├── settings.js       Connection info + active workflow + per-workflow values
+│   ├── jobs.js           Job state machine (submit, poll, cancel)
+│   ├── routes.js         /krea2/* routes, object_info cache, image path checks
+│   └── tool.js           krea2_workflows / krea2_generate
+├── client.js             Sidebar entry + main panel (dynamic form)
 ├── cordis.patch.yml      bundle patch
-├── locale/{en,zh}.json   title and description shown in Plugin Manager
+├── locale/{en,zh}.json   title and description in Plugin Manager
+├── docs/panel.png        screenshot
 └── icon.svg
 ```
 
-**Transport**: the client calls the Host's HTTP routes with relative paths — `fetch('krea2/...', { credentials: 'same-origin' })`. No session involvement, no event-log writes. Images are proxied by the Host too, so the browser never talks to ComfyUI directly (no cross-origin problems).
+**The only graph-shaped data** is `BUILTIN_PRESETS` in `workflows.js` — two static Krea 2 JSONs. Nothing else knows about models or architectures.
 
 **Endpoints**:
 
 | Method | Path | Purpose |
 |---|---|---|
-| GET | `/krea2/status` | ComfyUI state, model inventory, current settings |
-| GET/POST | `/krea2/settings` | read / partially update settings |
-| POST | `/krea2/generate` | submit one generation, returns a job immediately |
-| GET | `/krea2/job?id=` | one job's state |
-| GET | `/krea2/jobs` | recent jobs |
-| POST | `/krea2/cancel` | stop a job |
-| GET | `/krea2/image?path=` | image bytes |
+| GET | `/krea2/status` | ComfyUI state, preset list, current settings |
+| GET | `/krea2/workflow?id=` | Discovered parameters and saved values for one preset |
+| POST | `/krea2/workflow` | Create or replace a user preset |
+| DELETE | `/krea2/workflow?id=` | Delete a user preset |
+| GET/POST | `/krea2/settings` | Read / partially update settings |
+| POST | `/krea2/generate` | Submit one generation, returns a job immediately |
+| GET | `/krea2/job?id=` | One job's state |
+| GET | `/krea2/jobs` | Recent jobs |
+| POST | `/krea2/cancel` | Stop a job |
+| GET | `/krea2/image?path=` | Image bytes |
 
-`?path=` is re-resolved and must land inside ComfyUI's `output` or `temp`; `..` traversal and outside paths are a flat 404.
+`?path=` is re-resolved and must land inside ComfyUI's `output` or `temp`; traversal and outside paths are a flat 404.
+
+The browser calls these with relative paths — `fetch('krea2/...', { credentials: 'same-origin' })` — and images are proxied by the Host, so the browser never talks to ComfyUI directly.
 
 ## Development
 
 ```bash
-npm run check   # node --check on all 7 entry files
-npm test        # 25 tests: workflow construction, path safety, tool argument mapping
+npm run check   # node --check on all 8 entry files
+npm test        # 25 tests: discovery, merging, path safety, tool arguments
 ```
 
-There is no build step: `client.js` is plain JavaScript loaded by the browser directly (`window.__ModuleLoader__` format), so a page refresh picks up changes.
+No build step: `client.js` is plain JavaScript the browser loads directly (`window.__ModuleLoader__` format), so a page refresh picks up changes.
 
 After editing `index.js` or anything under `lib/`, disable and re-enable the plugin from `plugin_manager` so a fresh module generation is loaded.
 
@@ -252,25 +225,26 @@ GitHub Actions runs `npm run check` and `npm test` on every push and pull reques
 ```bash
 git init
 git add -A
-git commit -m "feat: Krea 2 studio panel"
+git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
 git remote add origin https://github.com/W3967/dsh-krea2-panel.git
 git branch -M main
 git push -u origin main
 ```
 
-To publish on npm, remove `"private": true` from `package.json` if present, check `npm pack --dry-run`, then `npm publish --access public`.
-
 ## Known limitations
 
-- Cancellation is best effort: ComfyUI's `/interrupt` is global, so a prompt already sampling may still finish while the panel marks it canceled.
-- One generation is capped at 10 minutes; exceeding it is reported as a failure.
-- The reference image must be an absolute local path (the panel copies it into ComfyUI's `input`); drag-and-drop upload is not supported yet.
+- **API format only**. The UI-format JSON (with `nodes` / `links`) is not parsed.
+- **Complex workflows produce ugly forms**: multi-stage sampling, masks and branching graphs degrade into a pile of `Class · field` controls. Functional, not pretty.
+- **One output node**: when a workflow has several `SaveImage` nodes, only the first one's images are shown.
+- **Cancellation is best effort**: ComfyUI's `/interrupt` is global, so a prompt already sampling may still finish while the panel marks it canceled.
+- One generation is capped at 10 minutes.
+- Image inputs take an absolute local path; drag-and-drop upload is not supported yet.
 - The panel does not manage images; results stay in ComfyUI's `output` folder.
 
 ## Notes
 
-- **The Krea 2 weights themselves** are covered by the Krea 2 Community License (conditional commercial use, mandatory content-filtering obligations). This plugin only calls your local ComfyUI and ships no model weights.
+- **Model weights carry their own licences**. The built-in Krea 2 presets correspond to the Krea 2 Community License (conditional commercial use, mandatory content-filtering obligations). This plugin ships no model weights.
 
 ## License
 

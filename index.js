@@ -1,18 +1,18 @@
 /**
  * Host half of dsh-krea2-panel.
  *
- * Owns the `/krea2/*` HTTP surface the browser panel calls: ComfyUI status,
- * the model inventory, persisted settings, generation jobs, and image bytes.
- * Also registers the `krea2_generate` agent tool, which drives the same job
- * queue. The Client half renders everything; this module never touches the UI.
+ * Owns the `/krea2/*` HTTP surface the browser panel calls: ComfyUI status, the
+ * workflow presets and their discovered parameters, generation jobs, and image
+ * bytes. Also registers the agent tools, which drive the same job queue.
  *
  * @module dsh-krea2-panel
  */
 
 import { createJobs } from './lib/jobs.js'
-import { PREFIX, createRoutes } from './lib/routes.js'
+import { PREFIX, createObjectInfoCache, createRoutes } from './lib/routes.js'
 import { createSettings } from './lib/settings.js'
 import { registerGenerateTool } from './lib/tool.js'
+import { createWorkflowStore } from './lib/workflows.js'
 
 /** Cordis plugin name. */
 export const name = 'krea2'
@@ -27,8 +27,15 @@ export const inject = ['webServer']
 export function apply(ctx, rawConfig) {
   const config = rawConfig !== null && typeof rawConfig === 'object' ? rawConfig : {}
   const settings = createSettings({ dshHome: config.dshHome, seed: config })
-  const jobs = createJobs({ settings })
-  const handle = createRoutes({ settings, jobs })
+  const workflows = createWorkflowStore({ dir: settings.dir })
+  const objectInfo = createObjectInfoCache()
+
+  const jobs = createJobs({
+    settings,
+    workflows,
+    getObjectInfo: () => objectInfo.get(settings.read().comfyUrl),
+  })
+  const handle = createRoutes({ settings, jobs, workflows, objectInfo })
 
   ctx.effect(() => {
     const dispose = ctx.webServer.register({
@@ -43,5 +50,5 @@ export function apply(ctx, rawConfig) {
   }, 'krea2-routes')
 
   // Optional: profiles without a tool registry keep the panel.
-  registerGenerateTool(ctx, { jobs })
+  registerGenerateTool(ctx, { settings, workflows, objectInfo, jobs })
 }

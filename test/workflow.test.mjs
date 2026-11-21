@@ -1,125 +1,260 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { buildStyleRef, buildTxt2Img, buildWorkflow, clampInt, randomSeed, unetLoaderNode } from '../lib/comfy.js'
+import {
+  BUILTIN_PRESETS,
+  controlFor,
+  defaultValues,
+  discoverParams,
+  isLink,
+  mergeWorkflow,
+  readInputSpec,
+} from '../lib/workflows.js'
 
-const BASE = {
-  prompt: 'a red fox',
-  negative: '',
-  unet: 'model-Q2_K.gguf',
-  clip: 'clip.safetensors',
-  vae: 'vae.safetensors',
-  lora: '',
-  loraStrength: 1,
-  width: 1024,
-  height: 1024,
-  steps: 8,
-  cfg: 1,
-  sampler: 'euler',
-  seed: 42,
-  referenceImage: 'krea2_ref_abcd1234.png',
+/** A trimmed `/object_info` covering the node classes the built-ins use. */
+const OBJECT_INFO = {
+  UnetLoaderGGUF: {
+    input: { required: { unet_name: [['krea2_turbo-Q2_K.gguf'], {}] } },
+  },
+  UNETLoader: {
+    input: {
+      required: {
+        unet_name: [['krea2_turbo.safetensors'], {}],
+        weight_dtype: [['default', 'fp8_e4m3fn'], {}],
+      },
+    },
+  },
+  CLIPLoader: {
+    input: {
+      required: {
+        clip_name: [['qwen3vl_4b_fp8_scaled.safetensors'], {}],
+        type: [['krea2', 'stable_diffusion'], {}],
+      },
+    },
+  },
+  VAELoader: {
+    input: { required: { vae_name: [['qwen_image_vae.safetensors'], {}] } },
+  },
+  CLIPTextEncode: {
+    input: { required: { text: ['STRING', { multiline: true }], clip: ['CLIP', {}] } },
+  },
+  EmptyLatentImage: {
+    input: {
+      required: {
+        width: ['INT', { default: 512, min: 16, max: 16384, step: 8 }],
+        height: ['INT', { default: 512, min: 16, max: 16384, step: 8 }],
+        batch_size: ['INT', { default: 1, min: 1, max: 4096 }],
+      },
+    },
+  },
+  ModelSamplingFlux: {
+    input: {
+      required: {
+        model: ['MODEL', {}],
+        max_shift: ['FLOAT', { default: 1.15, min: 0, max: 100, step: 0.01 }],
+        base_shift: ['FLOAT', { default: 0.5, min: 0, max: 100, step: 0.01 }],
+        width: ['INT', { default: 512, min: 16, max: 16384, step: 8 }],
+        height: ['INT', { default: 512, min: 16, max: 16384, step: 8 }],
+      },
+    },
+  },
+  KSampler: {
+    input: {
+      required: {
+        model: ['MODEL', {}],
+        positive: ['CONDITIONING', {}],
+        negative: ['CONDITIONING', {}],
+        latent_image: ['LATENT', {}],
+        seed: ['INT', { default: 0, min: 0, max: 18446744073709551615 }],
+        steps: ['INT', { default: 20, min: 1, max: 10000 }],
+        cfg: ['FLOAT', { default: 8, min: 0, max: 100, step: 0.1 }],
+        sampler_name: [['euler', 'euler_ancestral', 'dpmpp_2m'], {}],
+        scheduler: [['simple', 'normal'], {}],
+        denoise: ['FLOAT', { default: 1, min: 0, max: 1, step: 0.01 }],
+      },
+    },
+  },
+  LoraLoaderModelOnly: {
+    input: {
+      required: {
+        model: ['MODEL', {}],
+        lora_name: [['krea2_style_reference.safetensors'], {}],
+        strength_model: ['FLOAT', { default: 1, min: -100, max: 100, step: 0.01 }],
+      },
+    },
+  },
+  LoadImage: {
+    input: { required: { image: ['STRING', { image_upload: true }] } },
+  },
+  TextEncodeQwenImageEditPlus: {
+    input: {
+      required: {
+        clip: ['CLIP', {}],
+        vae: ['VAE', {}],
+        image1: ['IMAGE', {}],
+        prompt: ['STRING', { multiline: true }],
+      },
+    },
+  },
+  VAEDecode: { input: { required: { samples: ['LATENT', {}], vae: ['VAE', {}] } } },
+  SaveImage: { input: { required: { images: ['IMAGE', {}], filename_prefix: ['STRING', {}] } } },
+  FluxKontextMultiReferenceLatentMethod: {
+    input: { required: { conditioning: ['CONDITIONING', {}], reference_latents_method: [['a', 'b'], {}] } },
+  },
+  ConditioningZeroOut: { input: { required: { conditioning: ['CONDITIONING', {}] } } },
+  CFGGuider: {
+    input: {
+      required: {
+        model: ['MODEL', {}],
+        positive: ['CONDITIONING', {}],
+        negative: ['CONDITIONING', {}],
+        cfg: ['FLOAT', { default: 8, min: 0, max: 100, step: 0.1 }],
+      },
+    },
+  },
+  KSamplerSelect: { input: { required: { sampler_name: [['euler'], {}] } } },
+  BasicScheduler: {
+    input: {
+      required: {
+        model: ['MODEL', {}],
+        scheduler: [['simple'], {}],
+        steps: ['INT', { default: 20, min: 1, max: 10000 }],
+        denoise: ['FLOAT', { default: 1, min: 0, max: 1, step: 0.01 }],
+      },
+    },
+  },
+  RandomNoise: {
+    input: { required: { noise_seed: ['INT', { default: 0, min: 0, max: 18446744073709551615 }] } },
+  },
+  SamplerCustomAdvanced: {
+    input: {
+      required: {
+        noise: ['NOISE', {}],
+        guider: ['GUIDER', {}],
+        sampler: ['SAMPLER', {}],
+        sigmas: ['SIGMAS', {}],
+        latent_image: ['LATENT', {}],
+      },
+    },
+  },
 }
 
-test('txt2img wires the prompt, size, seed and sampler into the graph', () => {
-  const graph = buildTxt2Img({ ...BASE, width: 1152, height: 896, steps: 12, cfg: 1.5, seed: 777 })
+const TXT2IMG = BUILTIN_PRESETS.find((preset) => preset.id === 'krea2-txt2img')
+const STYLE = BUILTIN_PRESETS.find((preset) => preset.id === 'krea2-style')
 
-  assert.equal(graph[1].class_type, 'UnetLoaderGGUF')
-  assert.equal(graph[1].inputs.unet_name, 'model-Q2_K.gguf')
-  assert.equal(graph[2].inputs.clip_name, 'clip.safetensors')
-  assert.equal(graph[3].inputs.vae_name, 'vae.safetensors')
-  assert.equal(graph[4].inputs.text, 'a red fox')
-  assert.equal(graph[6].inputs.width, 1152)
-  assert.equal(graph[6].inputs.height, 896)
-  assert.equal(graph[7].inputs.width, 1152)
-  assert.equal(graph[8].inputs.seed, 777)
-  assert.equal(graph[8].inputs.steps, 12)
-  assert.equal(graph[8].inputs.cfg, 1.5)
-  assert.equal(graph[8].inputs.sampler_name, 'euler')
-  assert.deepEqual(graph[8].inputs.model, ['7', 0])
+test('isLink only treats [nodeId, index] pairs as links', () => {
+  assert.equal(isLink(['4', 0]), true)
+  assert.equal(isLink('euler'), false)
+  assert.equal(isLink(42), false)
+  assert.equal(isLink(['a', 'b']), false)
+  assert.equal(isLink(['4']), false)
 })
 
-test('unetLoaderNode switches loader on the file extension', () => {
-  const gguf = unetLoaderNode('krea2_turbo-Q2_K.gguf')
-  assert.equal(gguf.class_type, 'UnetLoaderGGUF')
-  assert.deepEqual(gguf.inputs, { unet_name: 'krea2_turbo-Q2_K.gguf' })
+test('readInputSpec understands combo, int and string declarations', () => {
+  const combo = readInputSpec(OBJECT_INFO, 'KSampler', 'sampler_name')
+  assert.equal(combo.type, 'COMBO')
+  assert.deepEqual(combo.choices, ['euler', 'euler_ancestral', 'dpmpp_2m'])
 
-  const upper = unetLoaderNode('MODEL.Q8_0.GGUF')
-  assert.equal(upper.class_type, 'UnetLoaderGGUF')
+  const int = readInputSpec(OBJECT_INFO, 'KSampler', 'steps')
+  assert.equal(int.type, 'INT')
+  assert.equal(int.max, 10000)
 
-  const safetensors = unetLoaderNode('krea2_turbo.safetensors')
-  assert.equal(safetensors.class_type, 'UNETLoader')
-  assert.deepEqual(safetensors.inputs, { unet_name: 'krea2_turbo.safetensors', weight_dtype: 'default' })
+  const text = readInputSpec(OBJECT_INFO, 'CLIPTextEncode', 'text')
+  assert.equal(text.type, 'STRING')
+  assert.equal(text.multiline, true)
 
-  // An empty name must still produce a well-formed node, not a crash.
-  assert.equal(unetLoaderNode('').class_type, 'UNETLoader')
-  assert.equal(unetLoaderNode(undefined).class_type, 'UNETLoader')
+  assert.equal(readInputSpec(OBJECT_INFO, 'Nope', 'x'), null)
+  assert.equal(readInputSpec(OBJECT_INFO, 'KSampler', 'nope'), null)
 })
 
-test('a safetensors model goes through the native loader in both modes', () => {
-  const t2i = buildTxt2Img({ ...BASE, unet: 'krea2_turbo.safetensors' })
-  assert.equal(t2i[1].class_type, 'UNETLoader')
-  assert.equal(t2i[1].inputs.weight_dtype, 'default')
-
-  const style = buildStyleRef({ ...BASE, unet: 'krea2_turbo.safetensors' })
-  assert.equal(style[1].class_type, 'UNETLoader')
-  assert.equal(style[1].inputs.unet_name, 'krea2_turbo.safetensors')
-  // The rest of the style graph still hangs off the same node id.
-  assert.equal(style[4].class_type, 'LoraLoaderModelOnly')
-  assert.deepEqual(style[4].inputs.model, ['1', 0])
+test('controlFor maps declared types to widgets', () => {
+  assert.equal(controlFor({ type: 'COMBO' }), 'select')
+  assert.equal(controlFor({ type: 'INT', min: 0, max: 100 }), 'slider')
+  assert.equal(controlFor({ type: 'INT', min: 0, max: 10000 }), 'number')
+  assert.equal(controlFor({ type: 'FLOAT', min: 0, max: 1 }), 'slider')
+  assert.equal(controlFor({ type: 'STRING', multiline: true }), 'textarea')
+  assert.equal(controlFor({ type: 'STRING' }), 'text')
+  assert.equal(controlFor({ type: 'BOOLEAN' }), 'toggle')
 })
 
-test('txt2img inserts a LoRA node between the UNet and the sampler', () => {
-  const graph = buildTxt2Img({ ...BASE, lora: 'style.safetensors', loraStrength: 0.65 })
+test('discovery finds the prompt and negative prompt from the graph wiring', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const positive = params.find((param) => param.key === '4.text')
+  const negative = params.find((param) => param.key === '5.text')
 
-  assert.equal(graph[11].class_type, 'LoraLoaderModelOnly')
-  assert.equal(graph[11].inputs.lora_name, 'style.safetensors')
-  assert.equal(graph[11].inputs.strength_model, 0.65)
-  assert.deepEqual(graph[11].inputs.model, ['1', 0])
-  assert.deepEqual(graph[7].inputs.model, ['11', 0])
+  assert.equal(positive.label, '画面描述')
+  assert.equal(positive.group, 'prompt')
+  assert.equal(positive.control, 'textarea')
+  assert.equal(negative.label, '负面提示词')
 })
 
-test('txt2img omits the LoRA node when no LoRA is selected', () => {
-  const graph = buildTxt2Img(BASE)
-  assert.equal(graph[11], undefined)
-  assert.deepEqual(graph[7].inputs.model, ['1', 0])
+test('discovery folds the repeated width/height into one control', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const width = params.find((param) => param.label === '宽')
+  const height = params.find((param) => param.label === '高')
+
+  assert.deepEqual(width.keys.sort(), ['6.width', '7.width'])
+  assert.deepEqual(height.keys.sort(), ['6.height', '7.height'])
+  assert.equal(width.group, 'size')
 })
 
-test('style_ref uses the reference image and the custom sampler graph', () => {
-  const graph = buildStyleRef({ ...BASE, referenceImage: 'krea2_ref_abcd1234.png', seed: 99 })
+test('discovery labels seeds, steps, cfg and sampler sensibly', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const byKey = new Map(params.map((param) => [param.key, param]))
 
-  assert.equal(graph[6].class_type, 'LoadImage')
-  assert.equal(graph[6].inputs.image, 'krea2_ref_abcd1234.png')
-  assert.equal(graph[4].inputs.lora_name, '')
-  assert.equal(graph[14].inputs.noise_seed, 99)
-  assert.equal(graph[12].inputs.steps, 8)
-  assert.equal(graph[15].class_type, 'SamplerCustomAdvanced')
-  assert.equal(graph[17].inputs.filename_prefix, 'krea2_style')
+  assert.equal(byKey.get('8.seed').control, 'seed')
+  assert.equal(byKey.get('8.seed').group, 'sampling')
+  assert.equal(byKey.get('8.steps').label, '步数')
+  assert.equal(byKey.get('8.steps').control, 'number')
+  assert.equal(byKey.get('8.cfg').label, 'CFG')
+  assert.equal(byKey.get('8.sampler_name').control, 'select')
+  assert.deepEqual(byKey.get('8.sampler_name').choices, ['euler', 'euler_ancestral', 'dpmpp_2m'])
+  assert.equal(byKey.get('2.clip_name').label, '文本编码器')
 })
 
-test('style_ref falls back to a neutral prompt for an empty string', () => {
-  const graph = buildStyleRef({ ...BASE, prompt: '' })
-  assert.equal(graph[7].inputs.prompt, 'the same style and atmosphere as the reference image')
+test('discovery never emits a control for a link', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const keys = new Set(params.flatMap((param) => param.keys))
+  assert.equal(keys.has('8.model'), false)
+  assert.equal(keys.has('8.positive'), false)
+  assert.equal(keys.has('9.samples'), false)
 })
 
-test('buildWorkflow dispatches on the mode name', () => {
-  assert.equal(buildWorkflow('txt2img', BASE)[10].inputs.filename_prefix, 'krea2_t2i')
-  assert.equal(buildWorkflow('style_ref', BASE)[17].inputs.filename_prefix, 'krea2_style')
-  // An unknown mode must not crash; it degrades to text-to-image.
-  assert.equal(buildWorkflow('nope', BASE)[10].inputs.filename_prefix, 'krea2_t2i')
+test('the style preset exposes its reference image as an image control', () => {
+  const params = discoverParams(STYLE.template, OBJECT_INFO)
+  const image = params.find((param) => param.resource === 'image')
+  assert.equal(image.key, '6.image')
+  assert.equal(image.control, 'image')
 })
 
-test('clampInt keeps values in range and rounds', () => {
-  assert.equal(clampInt(1024, 256, 1280, 512), 1024)
-  assert.equal(clampInt(100, 256, 1280, 512), 256)
-  assert.equal(clampInt(9999, 256, 1280, 512), 1280)
-  assert.equal(clampInt('abc', 256, 1280, 512), 512)
-  assert.equal(clampInt(8.6, 1, 60, 8), 9)
+test('unknown node classes are skipped instead of crashing', () => {
+  const params = discoverParams({ 1: { class_type: 'NotInstalled', inputs: { x: 1 } } }, OBJECT_INFO)
+  assert.deepEqual(params, [])
 })
 
-test('randomSeed stays a positive integer', () => {
-  for (let i = 0; i < 20; i += 1) {
-    const seed = randomSeed()
-    assert.ok(Number.isInteger(seed))
-    assert.ok(seed >= 0)
-  }
+test('defaults come from the graph, and merge writes them back', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const values = defaultValues(params)
+  assert.equal(values['8.steps'], 8)
+  assert.equal(values['4.text'], TXT2IMG.template[4].inputs.text)
+
+  const merged = mergeWorkflow(TXT2IMG.template, { ...values, '8.steps': 20 }, params)
+  assert.equal(merged[8].inputs.steps, 20)
+  // The source template must not be mutated.
+  assert.equal(TXT2IMG.template[8].inputs.steps, 8)
+})
+
+test('merging a folded parameter updates every owning node', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const width = params.find((param) => param.label === '宽')
+  const merged = mergeWorkflow(TXT2IMG.template, { [width.id]: 768 }, params)
+
+  assert.equal(merged[6].inputs.width, 768)
+  assert.equal(merged[7].inputs.width, 768)
+})
+
+test('unknown parameter ids are ignored by merge', () => {
+  const params = discoverParams(TXT2IMG.template, OBJECT_INFO)
+  const merged = mergeWorkflow(TXT2IMG.template, { 'nope.nope': 1 }, params)
+  assert.deepEqual(merged, TXT2IMG.template)
 })

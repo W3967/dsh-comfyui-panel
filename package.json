@@ -1,8 +1,8 @@
 {
   "name": "dsh-krea2-panel",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Krea 2 image studio for DeepSeek Harness: pick quantized UNet / LoRA, tune size, steps and seed, and generate from a sidebar panel backed by a local ComfyUI. · DSH 里的 Krea 2 图像生成面板：可切换量化模型与 LoRA，调整尺寸/步数/种子，直接出图。",
+  "description": "A generic ComfyUI front end for DeepSeek Harness: import any API-format workflow, get a form generated from its graph. Ships Krea 2 presets. · DSH 里的通用 ComfyUI 工作台：导入任意 API 格式工作流，自动生成参数表单；内置 Krea 2 预设。",
   "license": "MIT",
   "author": "W3967",
   "repository": {
@@ -42,7 +42,7 @@
     "LICENSE"
   ],
   "scripts": {
-    "check": "node --check index.js && node --check client.js && node --check lib/comfy.js && node --check lib/settings.js && node --check lib/jobs.js && node --check lib/routes.js && node --check lib/tool.js",
+    "check": "node --check index.js && node --check client.js && node --check lib/comfy.js && node --check lib/settings.js && node --check lib/workflows.js && node --check lib/jobs.js && node --check lib/routes.js && node --check lib/tool.js",
     "test": "node test/workflow.test.mjs && node test/paths.test.mjs && node test/tool.test.mjs"
   },
   "dsh": {

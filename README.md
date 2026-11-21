@@ -1,98 +1,46 @@
-# Krea 2 Studio · DSH 插件
+# ComfyUI 工作台 · DSH 插件
 
 [![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
 
 中文 | [English](README.en.md)
 
-把本机 **Krea 2（ComfyUI）** 接进 DeepSeek Harness：侧栏点一下，选模型、写描述、调参数，直接出图。
+把本机 **ComfyUI** 接进 DeepSeek Harness：导入任意 API 格式工作流，自动生成参数表单，侧栏里直接出图。
 
 本地跑 ComfyUI 出图，通常得切到浏览器、在节点图里改参数、再切回来。这个插件把这一整套收进 DSH 的侧栏——参数面板常驻，生成的图和对话并排，不用离开工作流。
 
-A DeepSeek Harness plugin that turns a local ComfyUI running Krea 2 into a sidebar panel: pick the quantized UNet and LoRA, tune size / steps / seed, and generate without leaving the app.
+内置 **Krea 2** 两个预设（文生图 / 风格参考），开箱即用；其它模型只要在 ComfyUI 里能跑，导进来就有表单。
 
-Generating with a local ComfyUI usually means switching to a browser, editing parameters in a node graph, then switching back. This plugin folds all of that into the DSH sidebar: the parameter panel stays put and the images land next to your conversation.
-
-![Krea 2 面板](docs/panel.png)
+![面板](docs/panel.png)
 
 ---
 
+## 它是通用的，不是 Krea 2 专用
+
+插件的核心不是某一套模型，而是**参数发现**：拿 ComfyUI 自己的 `/object_info` 当元数据，把任意工作流图翻译成表单。
+
+| 信息来自 | 决定了什么 |
+|---|---|
+| `/object_info` | 每个输入该用下拉、滑块、数字框还是文本框；取值范围；下拉候选项 |
+| 工作流的连线 | 哪两个 `CLIPTextEncode` 分别是正面和负面提示词 |
+| 一张 60 行的语义规则表 | 「画面描述」「步数」「主模型」这类好读的标签和分组 |
+| 同值合并 | `EmptyLatentImage` 和 `ModelSamplingFlux` 都有的 `width`，合成一个控件 |
+
+规则不认识的节点不会报错，只会退化成「Class · field」的通用控件。所以你装什么自定义节点都不影响它工作。
+
 ## 特性
 
-- **侧栏入口 + 独立面板**：不占对话空间，和聊天并排使用。
-- **模型选择**：自动扫描 `<ComfyUI>/models`，下拉切换量化 UNet（含 GGUF）、文本编码器、VAE、LoRA。
-- **两种模式**：
-  - 文生图（txt2img）：只凭描述生成。
-  - 风格参考（style_ref）：给一张参考图，沿用它的风格与氛围；可一键把刚才的结果当参考图。
-- **参数可调**：尺寸预设 / 自定义宽高、步数、CFG、种子（留空随机）、采样器、LoRA 强度、ModelSamplingFlux 的 max/base shift。
-- **设置持久化**：ComfyUI 地址与目录存在 `$DSH_HOME/krea2-panel/settings.json`，重启后仍在。
-- **任务式生成**：提交后立刻返回，面板轮询进度，支持取消；完成后可看大图、复制路径。
-- **跟随宿主主题**：只用 `--dsw-alias-*` 设计令牌，亮色/暗色主题自动适配。
-- **Agent 工具**：`krea2_generate`，让模型直接出图并拿到结果路径，和面板共用同一条任务队列。
+- **导入任意工作流**：ComfyUI 里「Save (API Format)」导出的 JSON，粘进来就有表单。
+- **内置 Krea 2 预设**：文生图、风格参考，装好就能出图。
+- **两种输入**：面板点着用，或者让模型通过 agent 工具调用，两者共用同一条任务队列。
+- **参数自动识别**：正负提示词、种子、步数、CFG、尺寸、模型、LoRA 强度、图片输入。
+- **任务式生成**：提交即返回，面板轮询进度，支持取消，可看大图、复制路径。
+- **跟随宿主主题**：只用 `--dsw-alias-*` 设计令牌，亮色/暗色自动适配。
 
 ## 前置条件
 
-1. **ComfyUI** 在跑（默认 `http://127.0.0.1:8188`）。
-2. **GPU**：8 GB 显存可跑 Q2_K 量化（1024² / 8 步在 RTX 5060 Laptop 上约 70 秒），16 GB 以上可以上更大的量化档位。
-3. **Krea 2 所需的节点与模型**已装好，面板默认按下面这套工作流对接：
-   - `UnetLoaderGGUF`（GGUF 量化主模型）
-   - `CLIPLoader`（`type: krea2`）
-   - `VAELoader`
-   - `LoraLoaderModelOnly`（风格参考 LoRA）
-   - `ModelSamplingFlux` / `KSampler`（文生图）
-   - `TextEncodeQwenImageEditPlus` / `SamplerCustomAdvanced`（风格参考）
-
-   工作流写在 `lib/comfy.js` 里，是可读的普通对象；如果你的节点名或连线不同，直接改那两处 `buildTxt2Img` / `buildStyleRef`。
-
-## 装哪个：插件版 vs MCP 版
-
-同一套 ComfyUI 工作流有两个前端，**只需要装一个**：
-
-- **本插件（`dsh-krea2-panel`）** —— DSH 专属，带侧栏面板 + agent 工具。
-- **`krea2-mcp`** —— 纯 MCP server，只有工具，没有界面。
-
-两者驱动的是同一套 Krea 2 图（同一个 UNet / 文本编码器 / VAE / LoRA），差别在能怎么用：
-
-| | 本插件 | krea2-mcp |
-|---|---|---|
-| 形态 | Cordis bundle：面板 + 工具 | 纯 MCP server：只有工具 |
-| 谁能用 | 只有 DeepSeek Harness | 任何 MCP 客户端（Claude Desktop / Cursor / DSH …） |
-| 给人用 | ✅ 点面板调参数、看大图、翻本次会话的历史 | ❌ 只能通过聊天让模型代调 |
-| 给模型用 | `krea2_generate` | `generate_image`（DSH 里显示为 `mcp__krea2__generate_image`，其他客户端前缀不同） |
-| 选模型 | 扫描 `models/` 下拉切换 | 环境变量写死一个 |
-| 可调参数 | 步数 / CFG / LoRA 强度 / 采样器 / ModelSamplingFlux 位移 / 尺寸预设 | prompt / 模式 / 宽高 / seed |
-| 进度与取消 | ✅ 任务队列、轮询、可取消 | ❌ 一次调用阻塞到结束 |
-| 配置在哪 | 面板「设置」→ `$DSH_HOME/krea2-panel/settings.json` | 环境变量 / CLI flag（DSH 里写进 patch 的 `env`） |
-| 额外依赖 | 无（工作流内嵌在包里） | 无 npm 依赖，Node ≥ 18 |
-
-**在 DSH 里用插件版就够了，不要两个都装。** 插件版基本是 MCP 版的超集：工具能做的面板能做，面板能做的工具也能做。MCP 版唯一的额外能力是一个 `comfyui_status` 工具，而插件版对应的是面板顶部的状态徽章和 `GET /krea2/status`（带显存、版本、模型清单）。
-
-### 什么时候仍然选 MCP 版
-
-- 你在**多个 MCP 客户端**之间共用配置（Cursor / Claude Desktop / DSH 都要用），MCP 版写一份 JSON 就够。
-- 你**不想要 UI**，或者跑在 headless / 远程无浏览器的环境里。
-- 你的 DSH 版本装不了 Cordis bundle。
-
-### 两个都装会怎样
-
-技术上不冲突（工具名不同、各自独立进程），但实际会让人和模型都犯难：
-
-- 工具列表里出现两个几乎相同的能力，模型挑哪个都不算错，结果随机；
-- 两条链路各自向 ComfyUI 提交任务，同时跑会抢 8 GB 显存；
-- 模型名和地址分两处配置，改了一边忘了另一边，表现就是「面板能出图、模型调不动」，很难查。
-
-如果之前装过 MCP 版，在 `cordis.patch.yml` 里把这段删掉或注释掉即可：
-
-```yaml
-# 停用 MCP 版，避免和插件版的 krea2_generate 重复
-# - insert:
-#     - id: mcp-krea2
-#       name: '@deepseek-ai/dsh-mcp-client'
-#       config:
-#         serverName: krea2
-#         transport: stdio
-#         command: 'node'
-#         args: ['D:/path/to/krea2-mcp/src/index.js']
-```
+1. **ComfyUI** 在跑（默认 `http://127.0.0.1:8188`），版本建议 ≥ 0.26.0。
+2. **显卡**：取决于你要跑的工作流。内置 Krea 2 预设用 Q2_K 量化，8 GB 显存可跑（1024² / 8 步约 70 秒）。
+3. **工作流能跑通**：先在 ComfyUI 网页里确认这套图能出图，再导进来。
 
 ## 安装
 
@@ -102,9 +50,9 @@ Generating with a local ComfyUI usually means switching to a browser, editing pa
 git clone https://github.com/W3967/dsh-krea2-panel.git
 ```
 
-在 Harness 里用 `plugin_manager` 的 `install_bundle`，目标填这个目录的绝对路径。本地目录安装是链接检出目录，改完代码重启会话即可生效。
+在 Harness 里用 `plugin_manager` 的 `install_bundle`，目标填这个目录的绝对路径。
 
-### 方式二：手动挂到 profile
+### 方式二：挂到 profile
 
 把包放进 profile 的 `node_modules`，并在 `cordis.patch.yml` 里加一行：
 
@@ -117,116 +65,135 @@ git clone https://github.com/W3967/dsh-krea2-panel.git
         comfyRoot: 'D:\AI\ComfyUI\ComfyUI_windows_portable\ComfyUI'
 ```
 
-`config` 只是**初始种子**：面板里保存过的值优先于它。
+`config` 只是**初始种子**：面板里保存过的值优先。
 
 ## 配置
 
-装好后侧栏会出现 ✦ 图标，点开就是面板。展开底部的「设置」：
+装好后侧栏出现 ✦ 图标。展开底部「设置」：
 
 | 项 | 说明 |
 |---|---|
 | ComfyUI 地址 | 默认 `http://127.0.0.1:8188`，反代路径（如 `http://host/comfy`）也支持。 |
-| ComfyUI 目录 | 指向含 `models/`、`input/`、`output/` 的那一层。**必填**，否则模型下拉为空、也读不到生成的图。 |
-| 采样器 | `euler` / `euler_ancestral` / `dpmpp_2m` / `dpmpp_2m_sde` / `dpmpp_sde` / `heun` / `lcm`。 |
+| ComfyUI 目录 | 含 `models/`、`input/`、`output/` 的那一层。**必填**，否则读不到生成的图，也复制不了输入图片。 |
 
-其余参数（模型、尺寸、步数、CFG、LoRA 强度、CFG 之外的高级项）改动后自动保存，脚注会闪一下「已保存」。
+## 快速开始
 
-## 使用
+1. 左上角工作流下拉选 **Krea 2 · 文生图**
+2. 在「提示词」里写画面描述（英文效果最好）
+3. 确认主模型下拉选到了文件
+4. 点「生成」（或 `Ctrl/Cmd + Enter`）
+5. 结果出现在右侧；点图看大图，缩略图条回看本次会话
 
-1. 选模式：文生图或风格参考。
-2. 写画面描述（英文效果最好，中文也能识别）。
-3. 选主模型（必填）——其余下拉会自动跟随可用文件。
-4. 调尺寸与步数。RTX 5060 8 GB 上 1024² / 8 步约 70 秒；风格参考因为要编码参考图，通常更久。
-5. 点「生成」（或 `Ctrl/Cmd + Enter`）。
-6. 结果出现在右侧，点图看大图，缩略图条可回看本次会话的历史结果。
+参数改动会自动保存，下次打开还是这套值。
 
-## 换模型
+## 导入自己的工作流
 
-面板里那四个下拉全部来自对 ComfyUI `models/` 的**实时扫描**，换模型不用改代码、不用重装插件：
+### 1. 在 ComfyUI 里导出
 
-1. 把文件放进对应目录
-2. 点面板右上角的 ↻
-3. 在下拉里选中它（自动保存）
+搭好图、确认能出图之后，用菜单 **Workflow → Save (API Format)** 导出 JSON。
 
-| 类型 | 放这里 |
+> 只认 **API Format**。UI 格式那个带 `nodes` / `links` 数组的文件是给浏览器用的，这里解析不了。
+
+### 2. 粘进面板
+
+点工作流下拉右边的 **+**，填个名字，把整个 JSON 粘进去，点「导入」。
+
+### 3. 表单自己就出来了
+
+导入后会立刻发现参数。以 Krea 2 文生图为例，18 个参数被分成四组：
+
+```
+提示词    画面描述 · 负面提示词
+尺寸      宽 · 高 · 张数          （宽和高各自合并了两个节点）
+采样      种子 · 步数 · CFG · 采样器 · 调度器 · 降噪强度 · 位移上限/基准
+模型      主模型 · 文本编码器 · CLIP 类型 · VAE · LoRA
+```
+
+图片输入（`LoadImage`）会变成路径框，旁边有「用最近结果」按钮，可以把刚才生成的图直接填进去。
+
+### 4. 认不出的参数怎么办
+
+落在「其他」组，标签形如 `SomeNode · some_field`，控件仍然可用。想让它好看，两种办法：
+
+- 在 [lib/workflows.js](lib/workflows.js) 的 `RULES` 里加一条匹配规则（一行）
+- 或者就这么用，功能不受影响
+
+## 参数是怎么来的
+
+发现算法按顺序做四件事，全部在 [lib/workflows.js](lib/workflows.js) 的 `discoverParams()` 里：
+
+1. **跳过连线**：`inputs: { model: ["7", 0] }` 是引用另一个节点，不是参数。
+2. **查声明**：`/object_info` 里这个输入的 `[type, options]`，决定控件、范围、下拉项。
+3. **贴语义**：按「class + 字段名」匹配规则表，比如 `KSampler.steps` → 步数。
+4. **同值合并**：语义相同且值相同的输入合到一个控件，写回时同时更新所有节点。
+
+正负提示词不靠猜：算法会找采样器的 `positive` / `negative` 输入连到哪个节点，那两个节点的文本就是对应提示词。
+
+## 给模型用
+
+注册了两个 agent 工具：
+
+| 工具 | 作用 |
 |---|---|
-| 主模型（UNet） | `models/diffusion_models/`（或 `unet/`） |
-| 文本编码器 | `models/text_encoders/` |
-| VAE | `models/vae/` |
-| LoRA | `models/loras/` |
+| `krea2_workflows` | 列出工作流和它们的参数（id、标签、控件、当前值、可选项） |
+| `krea2_generate` | 提交一次生成并等待图片，返回绝对路径 |
 
-### 主模型两种格式，自动适配加载器
+模型先用 `krea2_workflows` 看清参数名，再用 `krea2_generate` 提交：
 
-| 文件 | 加载节点 |
-|---|---|
-| `*.gguf`（社区量化） | `UnetLoaderGGUF` |
-| `*.safetensors`（官方全精度） | `UNETLoader` |
+```json
+{
+  "workflow": "krea2-txt2img",
+  "values": { "4.text": "a red fox in snow", "8.steps": 12, "6.width": 768 }
+}
+```
 
-扩展名决定用哪个加载器，所以「Q2_K 换 Q4_K」和「换成官方 fp16 文件」都只是换个下拉选项的事。
-
-### 什么能换、什么不能换
-
-| 变化 | 可行 | 说明 |
-|---|---|---|
-| 同架构换量化档位（Q2_K → Q4_K → Q8_0） | ✅ | 直接选 |
-| 换成官方 `.safetensors` 全精度 UNet | ✅ | 自动切到 `UNETLoader` |
-| 换 VAE | ✅ | 需与模型架构匹配（Krea 2 用 `qwen_image_vae`） |
-| 加一个风格 LoRA / 换 LoRA | ✅ | 只有**单槽位**，不支持多 LoRA 叠加 |
-| 换文本编码器 | ⚠️ | 必须是**官方 FP8 Qwen3VL**；用 GGUF 版会报 `12x2560` 特征维度错误 |
-| 换成 Flux / SDXL 等其它架构 | ❌ | 节点图不同，见下 |
-
-**为什么最后一条不行**：工作流的节点图是写死的——`ModelSamplingFlux` + `KSampler`、`CLIPLoader` 的 `type: krea2`、风格参考模式的 `TextEncodeQwenImageEditPlus`。这些是 Krea 2 / Qwen-Image 系列的专用节点，换架构等于换整张图。
-
-要支持别的架构，改 [lib/comfy.js](lib/comfy.js) 里的 `buildTxt2Img` / `buildStyleRef` 两个函数即可，其余部分（排队、参数校验、UI、工具）都不用动。
-
-## 给模型用：`krea2_generate`
-
-> 如果你同时装了 `krea2-mcp`，先看上一节「装哪个」——两个工具会打架。
-
-面板之外，插件还注册了一个 agent 工具。它走**同一条任务队列**（`jobs.start`），只是会等到图片真正产出再返回——模型没法轮询 job id，所以工具把这次调用挂到结束为止。
-
-| 参数 | 说明 |
-|---|---|
-| `prompt` | 画面描述。`style_ref` 模式下可传空字符串。 |
-| `mode` | `txt2img`（默认）/ `style_ref` |
-| `reference_image` | `style_ref` 必填，参考图绝对路径 |
-| `model` | 可选，临时覆盖 UNet 文件名 |
-| `lora` / `lora_strength` | 可选，覆盖 LoRA；`lora: ""` 表示这次不用 |
-| `width` / `height` / `steps` / `seed` | 可选，不传沿用面板里的设置 |
-
-返回 `{ path, paths, seed, width, height, steps, elapsed_ms, job_id }`，卡片上直接给图片路径。
+参数 key 就是 `krea2_workflows` 返回的 `params[].id`。
 
 和面板的关系：
 
-- **同一套参数校验和钳制**——工具里传 `width: 100` 一样会被夹到 256。
-- **串行执行**（`isConcurrencySafe: false`）：两个提示同时跑会抢 8 GB 显存，而 ComfyUI 的 `/interrupt` 是全局的。
-- **可取消**：模型侧中断时通过 `exec.signal` 把等待松开。
-- **工具超时 11 分钟**，比任务自身的 10 分钟上限略长，保证先拿到「任务失败」而不是「工具超时」。
+- **同一套校验和钳制**，不存在两套逻辑。
+- **串行执行**（`isConcurrencySafe: false`）：并发会抢显存，而 ComfyUI 的 `/interrupt` 是全局的。
+- **可取消**：模型侧中断时通过 `exec.signal` 松开等待。
+- **工具超时 11 分钟**，比任务的 10 分钟上限略长，保证先拿到「任务失败」而不是「工具超时」。
+
+## 和 krea2-mcp 的关系
+
+同一套后端有两个前端，**只需要装一个**：
+
+- **本插件** —— DSH 专属，面板 + 工具。
+- **`krea2-mcp`** —— 纯 MCP server，只有工具，任何 MCP 客户端都能用。
+
+两个都装会在工具列表里留下两个几乎相同的能力，模型随机挑，还会同时抢显存。在 DSH 里用插件就够了。
 
 ## 架构
 
 ```
 krea2-panel/
-├── index.js              Host 半：注册 /krea2 路由
+├── index.js              Host 半：组装设置、预设存储、路由、工具
 ├── lib/
-│   ├── comfy.js          ComfyUI HTTP 客户端 + 两份工作流图
-│   ├── settings.js       设置默认值、校验、落盘
-│   ├── jobs.js           任务状态机（queued→running→done/error/canceled）
-│   ├── routes.js         /krea2/* 的 HTTP 接口与图片安全校验
-│   └── tool.js           krea2_generate agent 工具
-├── client.js             Client 半：侧栏图标 + 主面板
+│   ├── comfy.js          ComfyUI HTTP 客户端（不含任何节点图）
+│   ├── workflows.js      参数发现、图合并、内置预设、用户预设存储
+│   ├── settings.js       连接信息 + 当前工作流 + 各工作流的参数值
+│   ├── jobs.js           任务状态机（连工作流一起提交、轮询、取消）
+│   ├── routes.js         /krea2/* HTTP 接口、object_info 缓存、图片路径校验
+│   └── tool.js           krea2_workflows / krea2_generate
+├── client.js             侧栏图标 + 主面板（动态表单）
 ├── cordis.patch.yml      bundle 补丁
 ├── locale/{en,zh}.json   Plugin Manager 里显示的标题与描述
+├── docs/panel.png        截图
 └── icon.svg
 ```
 
-**通信**：Client 用相对路径 `fetch('krea2/...', { credentials: 'same-origin' })` 调 Host 的 HTTP 路由，不经过会话、不写事件日志。图片也由 Host 代理返回，浏览器不直连 ComfyUI（避免跨域）。
+**唯一含"图"的地方**是 `workflows.js` 里的 `BUILTIN_PRESETS`，那是两个 Krea 2 的静态 JSON。除此之外没有任何模型或架构知识。
 
 **接口**：
 
 | 方法 | 路径 | 作用 |
 |---|---|---|
-| GET | `/krea2/status` | ComfyUI 状态、模型清单、当前设置 |
+| GET | `/krea2/status` | ComfyUI 状态、预设列表、当前设置 |
+| GET | `/krea2/workflow?id=` | 某个工作流的参数发现结果 + 保存的值 |
+| POST | `/krea2/workflow` | 新增/覆盖用户预设 |
+| DELETE | `/krea2/workflow?id=` | 删除用户预设 |
 | GET/POST | `/krea2/settings` | 读 / 局部更新设置 |
 | POST | `/krea2/generate` | 提交一次生成，立刻返回 job |
 | GET | `/krea2/job?id=` | 单个任务状态 |
@@ -236,16 +203,18 @@ krea2-panel/
 
 `?path=` 会重新解析并校验落在 ComfyUI 的 `output` / `temp` 之内，`..` 穿越与外部路径一律 404。
 
+浏览器用相对路径 `fetch('krea2/...', { credentials: 'same-origin' })` 调这些接口，图片也由 Host 代理，浏览器不直连 ComfyUI。
+
 ## 开发
 
 ```bash
-npm run check   # node --check 所有入口（7 个文件）
-npm test        # 25 个测试：工作流构建、路径安全、工具参数映射
+npm run check   # node --check 所有入口（8 个文件）
+npm test        # 25 个测试：参数发现、图合并、路径安全、工具参数
 ```
 
-无构建步骤：`client.js` 是直接被浏览器加载的普通 JS（`window.__ModuleLoader__` 格式），改完刷新页面即可。
+没有构建步骤：`client.js` 是浏览器直接加载的普通 JS（`window.__ModuleLoader__` 格式），改完刷新页面即可。
 
-Host 侧改了 `index.js` 或 `lib/` 之后，用 `plugin_manager` 把这个插件禁用再启用一次，新模块才会加载。
+Host 侧改了 `index.js` 或 `lib/` 之后，用 `plugin_manager` 把插件禁用再启用一次，新模块才会加载。
 
 ### CI
 
@@ -256,25 +225,26 @@ GitHub Actions 在每次 push 和 PR 时跑 `npm run check` + `npm test`（Node 
 ```bash
 git init
 git add -A
-git commit -m "feat: Krea 2 studio panel"
+git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
 git remote add origin https://github.com/W3967/dsh-krea2-panel.git
 git branch -M main
 git push -u origin main
 ```
 
-要发 npm 的话，把 `package.json` 的 `"private": true`（若有）去掉，`npm pack --dry-run` 确认打包内容，再 `npm publish --access public`。
-
 ## 已知限制
 
-- 取消是「尽力而为」：ComfyUI 的 `/interrupt` 是全局的，已经进入采样的任务可能仍会跑完，面板会立刻标为已取消。
-- 单次生成上限 10 分钟，超时判失败。
-- 参考图只接受本机绝对路径（面板会把它复制进 ComfyUI 的 `input`），暂不支持拖拽上传。
-- 面板本身不做图片管理；生成的图留在 ComfyUI 的 `output` 目录。
+- **只支持 API 格式**的工作流 JSON。UI 格式（带 `nodes` / `links`）不解析。
+- **复杂工作流表单可能不好看**：多段采样、遮罩、条件分支这类图，自动表单会退化成一堆「Class · field」。功能能用，界面不优雅。
+- **单次生成取第一个输出节点**的图片；一个工作流有多个 `SaveImage` 时只显示第一个的产物。
+- **取消是尽力而为**：ComfyUI 的 `/interrupt` 是全局的，已进入采样的任务可能仍会跑完，面板会立刻标为已取消。
+- 单次生成上限 10 分钟。
+- 图片输入只接受本机绝对路径，暂不支持拖拽上传。
+- 面板不做图片管理，生成的图留在 ComfyUI 的 `output` 目录。
 
 ## 注意事项
 
-- **Krea 2 模型本身**适用 Krea 2 Community License（商用有条件、有内容过滤义务）。本插件只是调用你的本地 ComfyUI，不附带任何模型权重。
+- **模型权重适用各自的许可证**。内置 Krea 2 预设对应 Krea 2 Community License（商用有条件、有内容过滤义务）。本插件不附带任何模型权重。
 
 ## License
 
