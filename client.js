@@ -83,6 +83,9 @@ window.__ModuleLoader__.load({
         'action.copyPath': '复制路径',
         'action.close': '关闭',
         'action.saved': '已保存',
+        'action.recover': '恢复参数',
+        'action.reveal': '打开文件夹',
+        'action.delete': '删除',
 
         'state.queued': '排队中',
         'state.running': '生成中',
@@ -168,6 +171,9 @@ window.__ModuleLoader__.load({
         'action.copyPath': 'Copy path',
         'action.close': 'Close',
         'action.saved': 'Saved',
+        'action.recover': 'Restore parameters',
+        'action.reveal': 'Show in folder',
+        'action.delete': 'Delete',
 
         'state.queued': 'Queued',
         'state.running': 'Generating',
@@ -381,9 +387,15 @@ window.__ModuleLoader__.load({
 .k2-qmeta{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#8a8a93);font-variant-numeric:tabular-nums}
 .k2-dialog-count{font-size:11.5px;font-weight:400;color:var(--dsw-alias-label-tertiary,#8a8a93)}
 .k2-history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:56vh;overflow-y:auto}
-.k2-history-item{padding:0;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-layer-2,#18181d);cursor:pointer;aspect-ratio:1}
-.k2-history-item img{width:100%;height:100%;object-fit:cover;display:block}
+.k2-history-item{position:relative;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-layer-2,#18181d);aspect-ratio:1}
+.k2-history-pic{display:block;width:100%;height:100%;padding:0;border:0;background:transparent;cursor:pointer}
+.k2-history-pic img{width:100%;height:100%;object-fit:cover;display:block}
 .k2-history-item:hover{border-color:var(--dsw-alias-state-business-primary,#4176E6)}
+.k2-history-acts{position:absolute;right:3px;bottom:3px;display:flex;gap:2px;opacity:0;transition:opacity .12s}
+.k2-history-item:hover .k2-history-acts,.k2-history-acts:focus-within{opacity:1}
+.k2-history-acts .k2-iconbtn{width:24px;height:24px;background:rgba(8,8,10,.72);color:#fff}
+.k2-history-acts .k2-iconbtn:hover{background:rgba(8,8,10,.9)}
+.k2-zoom-actions{position:absolute;bottom:24px;left:50%;transform:translateX(-50%);display:flex;gap:8px;padding:6px;border-radius:10px;background:rgba(8,8,10,.7);backdrop-filter:blur(4px)}
 
 .k2-alert{display:flex;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 34%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 10%,transparent);color:var(--dsw-alias-state-error-primary,#e5484d);font-size:12px;line-height:1.5}
 
@@ -456,6 +468,7 @@ window.__ModuleLoader__.load({
       list: 'M4 6h16 M4 12h16 M4 18h10',
       clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7.5V12l3.2 2',
       check: 'M5 12.5l4.5 4.5L19 7',
+      folder: 'M3.5 6.5h6l2 2.5h9v10h-17z',
     }
 
     function Icon(props) {
@@ -691,6 +704,8 @@ window.__ModuleLoader__.load({
 
       var saveTimer = useRef(null)
       var pendingValues = useRef(null)
+      /** Values from a recovered PNG, applied once the target workflow loads. */
+      var recoverRef = useRef(null)
 
       var scheduleSave = useCallback(function (next) {
         pendingValues.current = next
@@ -767,7 +782,10 @@ window.__ModuleLoader__.load({
             .then(function (res) {
               if (!alive) return
               setWorkflow(res.workflow)
-              setValues(res.workflow.values === undefined ? {} : res.workflow.values)
+              var base = res.workflow.values === undefined ? {} : res.workflow.values
+              var recovered = recoverRef.current
+              recoverRef.current = null
+              setValues(recovered === null ? base : Object.assign({}, base, recovered))
               if (res.workflow.error) setError(res.workflow.error)
             })
             .catch(function (failure) {
@@ -902,6 +920,52 @@ window.__ModuleLoader__.load({
         postJson(API + 'queue', { action: 'delete', ids: [promptId] }).catch(function (failure) {
           setError(failure.message)
         })
+      }
+
+      function revealFile(path) {
+        postJson(API + 'reveal', { path: path }).catch(function (failure) {
+          setError(failure.message)
+        })
+      }
+
+      function deleteImage(path) {
+        sendJson('DELETE', API + 'image?path=' + encodeURIComponent(path))
+          .then(function () {
+            setHistory(function (previous) {
+              return {
+                items: previous.items.filter(function (item) {
+                  return item.path !== path
+                }),
+                error: '',
+              }
+            })
+            if (zoom !== null && zoom.path === path) setZoom(null)
+          })
+          .catch(function (failure) {
+            setError(failure.message)
+          })
+      }
+
+      /** Read the graph a PNG carries and put its values back into the form. */
+      function recoverFrom(path) {
+        getJson(API + 'recover?path=' + encodeURIComponent(path))
+          .then(function (res) {
+            if (res.workflowId === workflowId) {
+              setValues(function (previous) {
+                return Object.assign({}, previous, res.values)
+              })
+            } else {
+              // Switching workflows reloads the form, so stash the values and let
+              // the load effect merge them.
+              recoverRef.current = res.values
+              setWorkflowId(res.workflowId)
+            }
+            setZoom(null)
+            setHistoryOpen(false)
+          })
+          .catch(function (failure) {
+            setError(failure.message)
+          })
       }
 
       var switchWorkflow = useCallback(
@@ -1592,7 +1656,10 @@ window.__ModuleLoader__.load({
                         src: imageUrl(currentResult.images[0].path),
                         alt: '',
                         onClick: function () {
-                          setZoom(imageUrl(currentResult.images[0].path))
+                          setZoom({
+                            url: imageUrl(currentResult.images[0].path),
+                            path: currentResult.images[0].path,
+                          })
                         },
                       })
                     : h(
@@ -1839,17 +1906,48 @@ window.__ModuleLoader__.load({
                         { className: 'k2-history-grid' },
                         history.items.map(function (item) {
                           return h(
-                            'button',
-                            {
-                              key: item.path,
-                              type: 'button',
-                              className: 'k2-history-item',
-                              title: item.name,
-                              onClick: function () {
-                                setZoom(imageUrl(item.path))
+                            'div',
+                            { key: item.path, className: 'k2-history-item' },
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'k2-history-pic',
+                                title: item.name,
+                                onClick: function () {
+                                  setZoom({ url: imageUrl(item.path), path: item.path })
+                                },
                               },
-                            },
-                            h('img', { src: imageUrl(item.path), alt: '' }),
+                              h('img', { src: imageUrl(item.path), alt: '' }),
+                            ),
+                            h(
+                              'div',
+                              { className: 'k2-history-acts' },
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'k2-iconbtn',
+                                  title: t('action.reveal'),
+                                  onClick: function () {
+                                    revealFile(item.path)
+                                  },
+                                },
+                                h(Icon, { name: 'folder', size: 13 }),
+                              ),
+                              h(
+                                'button',
+                                {
+                                  type: 'button',
+                                  className: 'k2-iconbtn',
+                                  title: t('action.delete'),
+                                  onClick: function () {
+                                    deleteImage(item.path)
+                                  },
+                                },
+                                h(Icon, { name: 'trash', size: 13 }),
+                              ),
+                            ),
                           )
                         }),
                       ),
@@ -1893,12 +1991,40 @@ window.__ModuleLoader__.load({
                 h(Icon, { name: 'close', size: 17 }),
               ),
               h('img', {
-                src: zoom,
+                src: zoom.url,
                 alt: '',
                 onClick: function (event) {
                   event.stopPropagation()
                 },
               }),
+              h(
+                'div',
+                { className: 'k2-zoom-actions' },
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'k2-btn is-small',
+                    onClick: function (event) {
+                      event.stopPropagation()
+                      recoverFrom(zoom.path)
+                    },
+                  },
+                  t('action.recover'),
+                ),
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'k2-btn is-small',
+                    onClick: function (event) {
+                      event.stopPropagation()
+                      revealFile(zoom.path)
+                    },
+                  },
+                  t('action.reveal'),
+                ),
+              ),
             )
           : null,
       )

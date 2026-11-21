@@ -35,7 +35,7 @@ A node class the rules do not recognise is not an error — it degrades to a gen
 - **Automatic parameter detection**: prompts, seed, steps, CFG, size, models, LoRA strength, image inputs.
 - **Job-based generation**: submit returns immediately, the panel polls progress, cancellation works, results open full size.
 - **Queue**: see every task ComfyUI has queued, not just this plugin's; drop pending items or clear them.
-- **History**: browse every image in the `output/` folder and open any of them full size.
+- **History**: browse every image in the `output/` folder; open one full size, **restore the parameters it was generated with**, reveal it in Explorer, or delete it.
 - **Parameter presets**: save the current set of values under a name and reapply it later.
 - **Follows the host theme**: only `--dsw-alias-*` design tokens.
 
@@ -195,6 +195,7 @@ comfyui-panel/
 │   ├── presets.js        Parameter presets (a set of values, not a graph)
 │   ├── jobs.js           Job state machine (submit, poll, cancel)
 │   ├── routes.js         /krea2/* routes, object_info cache, image path checks
+│   ├── recover.js        Reads the graph a PNG carries and restores its values
 │   └── tool.js           krea2_workflows / krea2_generate
 ├── client.js             Sidebar entry + main panel (dynamic form)
 ├── cordis.patch.yml      bundle patch
@@ -221,6 +222,9 @@ comfyui-panel/
 | GET | `/krea2/queue` | ComfyUI queue (running + pending) |
 | POST | `/krea2/queue` | Remove pending items or clear the queue |
 | GET | `/krea2/history?limit=` | Scan the `output/` folder for images |
+| GET | `/krea2/recover?path=` | Recover a generation's parameters from PNG metadata |
+| POST | `/krea2/reveal` | Reveal a file in Explorer |
+| DELETE | `/krea2/image?path=` | Delete one generated image |
 | GET/POST | `/krea2/presets` | Read / save parameter presets |
 | DELETE | `/krea2/presets?id=` | Delete a parameter preset |
 | GET | `/krea2/image?path=` | Image bytes |
@@ -265,7 +269,7 @@ git push -u origin main
 - One generation is capped at 10 minutes.
 - Image inputs take an absolute local path; drag-and-drop upload is not supported yet.
 - **ComfyUI caches executions**: a second submission with identical parameters reuses the previous output and can return in a second or two (that is where the "1.5s" in the screenshot comes from). That is ComfyUI's own behaviour — change the seed or a single word and it recomputes.
-- The panel does not manage images: history is read-only, good for viewing and opening full size, but there is no in-panel delete or move.
+- Image management covers the `output/` folder only: delete and reveal in Explorer work, rename and move do not.
 
 ## Notes
 
