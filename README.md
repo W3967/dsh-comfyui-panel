@@ -1,5 +1,7 @@
 # Krea 2 Studio · DSH 插件
 
+[![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
+
 中文 | [English](README.en.md)
 
 把本机 **Krea 2（ComfyUI）** 接进 DeepSeek Harness：侧栏点一下，选模型、写描述、调参数，直接出图。

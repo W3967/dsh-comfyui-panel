@@ -1,5 +1,7 @@
 # Krea 2 Studio · DeepSeek Harness plugin
 
+[![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
+
 Plug a local **Krea 2** ComfyUI into DeepSeek Harness: one click in the sidebar, pick the model, write a prompt, tune a few knobs, get an image.
 
 [中文](README.md) | English
