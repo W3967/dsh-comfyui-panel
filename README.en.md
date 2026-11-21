@@ -1,6 +1,6 @@
 # ComfyUI Studio · DeepSeek Harness plugin
 
-[![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
+[![test](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml)
 
 [中文](README.md) | English
 
@@ -47,7 +47,7 @@ A node class the rules do not recognise is not an error — it degrades to a gen
 ### Option 1: local directory (development)
 
 ```bash
-git clone https://github.com/W3967/dsh-krea2-panel.git
+git clone https://github.com/W3967/dsh-comfyui-panel.git
 ```
 
 In Harness, run `plugin_manager` with `install_bundle` and pass the absolute path of that directory.
@@ -59,7 +59,7 @@ Put the package in the profile's `node_modules` and add one row to `cordis.patch
 ```yaml
 - insert:
     - id: krea2
-      name: dsh-krea2-panel
+      name: dsh-comfyui-panel
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: 'D:\AI\ComfyUI\ComfyUI_windows_portable\ComfyUI'
@@ -168,7 +168,7 @@ Installing both leaves two near-identical capabilities in the tool list, the mod
 ## Architecture
 
 ```
-krea2-panel/
+comfyui-panel/
 ├── index.js              Host half: wires settings, presets, routes, tools
 ├── lib/
 │   ├── comfy.js          ComfyUI HTTP client (contains no node graph at all)
@@ -227,7 +227,7 @@ git init
 git add -A
 git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
-git remote add origin https://github.com/W3967/dsh-krea2-panel.git
+git remote add origin https://github.com/W3967/dsh-comfyui-panel.git
 git branch -M main
 git push -u origin main
 ```
@@ -240,6 +240,7 @@ git push -u origin main
 - **Cancellation is best effort**: ComfyUI's `/interrupt` is global, so a prompt already sampling may still finish while the panel marks it canceled.
 - One generation is capped at 10 minutes.
 - Image inputs take an absolute local path; drag-and-drop upload is not supported yet.
+- **ComfyUI caches executions**: a second submission with identical parameters reuses the previous output and can return in a second or two (that is where the "1.5s" in the screenshot comes from). That is ComfyUI's own behaviour — change the seed or a single word and it recomputes.
 - The panel does not manage images; results stay in ComfyUI's `output` folder.
 
 ## Notes

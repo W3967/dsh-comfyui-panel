@@ -1,10 +1,10 @@
-# dsh-krea2-panel: Krea 2 (ComfyUI) image studio.
+# dsh-comfyui-panel: a generic ComfyUI front end for DeepSeek Harness.
 # `config` seeds the settings before the panel saves anything; values saved
-# from the panel take precedence over this seed. Point `comfyRoot` at the
-# ComfyUI directory that holds `models/`, `input/` and `output/`.
+# from the panel take precedence. Point `comfyRoot` at the ComfyUI directory
+# that holds `models/`, `input/` and `output/`.
 - insert:
     - id: krea2
-      name: dsh-krea2-panel
+      name: dsh-comfyui-panel
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: ''

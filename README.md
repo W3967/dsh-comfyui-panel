@@ -1,6 +1,6 @@
 # ComfyUI 工作台 · DSH 插件
 
-[![test](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-krea2-panel/actions/workflows/test.yml)
+[![test](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml)
 
 中文 | [English](README.en.md)
 
@@ -47,7 +47,7 @@
 ### 方式一：本地目录（开发用）
 
 ```bash
-git clone https://github.com/W3967/dsh-krea2-panel.git
+git clone https://github.com/W3967/dsh-comfyui-panel.git
 ```
 
 在 Harness 里用 `plugin_manager` 的 `install_bundle`，目标填这个目录的绝对路径。
@@ -59,7 +59,7 @@ git clone https://github.com/W3967/dsh-krea2-panel.git
 ```yaml
 - insert:
     - id: krea2
-      name: dsh-krea2-panel
+      name: dsh-comfyui-panel
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: 'D:\AI\ComfyUI\ComfyUI_windows_portable\ComfyUI'
@@ -168,7 +168,7 @@ git clone https://github.com/W3967/dsh-krea2-panel.git
 ## 架构
 
 ```
-krea2-panel/
+comfyui-panel/
 ├── index.js              Host 半：组装设置、预设存储、路由、工具
 ├── lib/
 │   ├── comfy.js          ComfyUI HTTP 客户端（不含任何节点图）
@@ -227,7 +227,7 @@ git init
 git add -A
 git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
-git remote add origin https://github.com/W3967/dsh-krea2-panel.git
+git remote add origin https://github.com/W3967/dsh-comfyui-panel.git
 git branch -M main
 git push -u origin main
 ```
@@ -240,6 +240,7 @@ git push -u origin main
 - **取消是尽力而为**：ComfyUI 的 `/interrupt` 是全局的，已进入采样的任务可能仍会跑完，面板会立刻标为已取消。
 - 单次生成上限 10 分钟。
 - 图片输入只接受本机绝对路径，暂不支持拖拽上传。
+- **ComfyUI 会缓存执行结果**：参数完全相同的第二次提交会复用上次的输出，可能一两秒就返回（截图里那个「1.5s」就是这么来的）。这是 ComfyUI 自身的行为——换一个种子或改一个字就会重新计算。
 - 面板不做图片管理，生成的图留在 ComfyUI 的 `output` 目录。
 
 ## 注意事项

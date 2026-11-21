@@ -1,5 +1,5 @@
 /**
- * dsh-krea2-panel — Web Client half.
+ * dsh-comfyui-panel — Web Client half.
  *
  * Registers a sidebar entry and the main panel behind it. The panel is a
  * generic ComfyUI front end: pick a workflow preset, fill the form generated
@@ -7,7 +7,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-krea2-panel',
+  id: 'dsh-comfyui-panel',
   factory: function (require) {
     'use strict'
 
@@ -1488,7 +1488,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(function () {
         var style = document.createElement('style')
-        style.dataset.plugin = 'dsh-krea2-panel'
+        style.dataset.plugin = 'dsh-comfyui-panel'
         style.textContent = STYLE
         document.head.appendChild(style)
         return function () {
@@ -1504,13 +1504,13 @@ window.__ModuleLoader__.load({
         typeof locale.bind === 'function'
       ) {
         ctx.effect(function () {
-          var dispose = locale.register('dsh-krea2-panel', DICTS)
+          var dispose = locale.register('dsh-comfyui-panel', DICTS)
           return function () {
             if (typeof dispose === 'function') dispose()
           }
         })
         try {
-          var bound = locale.bind('dsh-krea2-panel')
+          var bound = locale.bind('dsh-comfyui-panel')
           if (typeof bound === 'function') localeTranslate = bound
         } catch (failure) {
           localeTranslate = null
@@ -1545,7 +1545,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      name: 'dsh-krea2-panel',
+      name: 'dsh-comfyui-panel',
       inject: ['slots', 'locale'],
       apply: apply,
     }
