@@ -42,6 +42,21 @@ A node class the rules do not recognise is not an error — it degrades to a gen
 2. **GPU**: whatever your workflow needs. The built-in Krea 2 preset runs Q2_K on 8 GB of VRAM (1024² at 8 steps, about 70 s).
 3. **A workflow that already works**: confirm it produces an image in the ComfyUI web UI first.
 
+## Optional: run ComfyUI in the background
+
+The portable ComfyUI opens a console window when you double-click `run_nvidia_gpu.bat`, and **closing that window stops the server** — a trap most people hit once.
+
+[docs/comfyui/](docs/comfyui/) holds two small scripts. Copy them into the portable ComfyUI root (next to `run_nvidia_gpu.bat`); they resolve their own folder, so nothing needs editing:
+
+| File | Purpose |
+|---|---|
+| `start-silent.vbs` | double-click to start with no window at all |
+| `stop.bat` | double-click to stop; matches only the ComfyUI process, other Python processes are left alone |
+
+Output goes to `comfyui.log` in the same folder. Keep `run_nvidia_gpu.bat` around for when you need live logs.
+
+Both scripts are a dozen lines each: start `ComfyUI\main.py` through `python.exe` with the window hidden and redirect the output. Read them before trusting them.
+
 ## Install
 
 ### Option 1: local directory (development)

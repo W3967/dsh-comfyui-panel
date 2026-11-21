@@ -42,6 +42,21 @@
 2. **显卡**：取决于你要跑的工作流。内置 Krea 2 预设用 Q2_K 量化，8 GB 显存可跑（1024² / 8 步约 70 秒）。
 3. **工作流能跑通**：先在 ComfyUI 网页里确认这套图能出图，再导进来。
 
+## 可选：让 ComfyUI 后台运行
+
+便携版 ComfyUI 双击 `run_nvidia_gpu.bat` 会弹出一个命令行窗口，**关掉窗口服务就停了** —— 很多人第一次用时都踩过这个坑。
+
+[docs/comfyui/](docs/comfyui/) 里有两个小脚本，复制到 ComfyUI 便携版根目录（和 `run_nvidia_gpu.bat` 同级）就能用，不需要改路径：
+
+| 文件 | 作用 |
+|---|---|
+| `start-silent.vbs` | 双击启动，完全不出现窗口 |
+| `stop.bat` | 双击停止，只杀 ComfyUI 进程，别的 Python 不受影响 |
+
+启动后的输出写到同目录的 `comfyui.log`。原来的 `run_nvidia_gpu.bat` 留着 —— 需要实时看日志时用它。
+
+两个脚本都只有十几行，做的事就是：用 `python.exe` 起 `ComfyUI\main.py` 并把窗口隐藏、输出重定向到文件。用之前可以自己读一遍。
+
 ## 安装
 
 ### 方式一：本地目录（开发用）
