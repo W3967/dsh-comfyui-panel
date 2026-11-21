@@ -122,7 +122,7 @@ window.__ModuleLoader__.load({
         'error.noUnet': '请选择主模型。',
         'error.noPrompt': '先写画面描述。',
         'error.noReference': '风格参考模式需要一张参考图。',
-        'hint.enter': '⌘/Ctrl + Enter 生成',
+        'hint.enter': 'Ctrl + Enter 生成',
       },
       en: {
         'nav.label': 'Krea 2',
@@ -209,7 +209,7 @@ window.__ModuleLoader__.load({
         'error.noUnet': 'Pick a UNet first.',
         'error.noPrompt': 'Write a prompt first.',
         'error.noReference': 'Style reference needs a reference image.',
-        'hint.enter': '⌘/Ctrl + Enter to generate',
+        'hint.enter': 'Ctrl + Enter to generate',
       },
     }
 

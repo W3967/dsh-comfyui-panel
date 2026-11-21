@@ -4,6 +4,8 @@
 
 A DeepSeek Harness plugin that turns a local ComfyUI running Krea 2 into a sidebar panel: pick the quantized UNet and LoRA, tune size / steps / seed, and generate without leaving the app.
 
+![Krea 2 面板](docs/panel.png)
+
 ---
 
 ## 特性
