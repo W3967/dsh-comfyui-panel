@@ -4,6 +4,8 @@
 
 Plug a local **Krea 2** ComfyUI into DeepSeek Harness: one click in the sidebar, pick the model, write a prompt, tune a few knobs, get an image.
 
+Generating with a local ComfyUI usually means switching to a browser, editing parameters in a node graph, then switching back. This plugin folds all of that into the DSH sidebar: the parameter panel stays put and the images land next to your conversation.
+
 [中文](README.md) | English
 
 ![Krea 2 panel](docs/panel.png)
@@ -26,7 +28,8 @@ Plug a local **Krea 2** ComfyUI into DeepSeek Harness: one click in the sidebar,
 ## Requirements
 
 1. **ComfyUI** running (default `http://127.0.0.1:8188`).
-2. **The nodes and models Krea 2 needs** already installed. The panel drives this graph:
+2. **GPU**: 8 GB of VRAM runs the Q2_K quant (1024² at 8 steps takes about 70 s on an RTX 5060 Laptop); 16 GB and up can take a larger quant.
+3. **The nodes and models Krea 2 needs** already installed. The panel drives this graph:
    - `UnetLoaderGGUF` (quantized GGUF UNet)
    - `CLIPLoader` (`type: krea2`)
    - `VAELoader`
@@ -232,13 +235,17 @@ krea2-panel/
 ## Development
 
 ```bash
-npm run check   # node --check on every entry point
-npm test        # workflow construction + path safety
+npm run check   # node --check on all 7 entry files
+npm test        # 25 tests: workflow construction, path safety, tool argument mapping
 ```
 
 There is no build step: `client.js` is plain JavaScript loaded by the browser directly (`window.__ModuleLoader__` format), so a page refresh picks up changes.
 
 After editing `index.js` or anything under `lib/`, disable and re-enable the plugin from `plugin_manager` so a fresh module generation is loaded.
+
+### CI
+
+GitHub Actions runs `npm run check` and `npm test` on every push and pull request (Node 22, about 15 seconds). The badge is at the top of this page.
 
 ### Publishing
 

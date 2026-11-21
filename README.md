@@ -6,7 +6,11 @@
 
 把本机 **Krea 2（ComfyUI）** 接进 DeepSeek Harness：侧栏点一下，选模型、写描述、调参数，直接出图。
 
+本地跑 ComfyUI 出图，通常得切到浏览器、在节点图里改参数、再切回来。这个插件把这一整套收进 DSH 的侧栏——参数面板常驻，生成的图和对话并排，不用离开工作流。
+
 A DeepSeek Harness plugin that turns a local ComfyUI running Krea 2 into a sidebar panel: pick the quantized UNet and LoRA, tune size / steps / seed, and generate without leaving the app.
+
+Generating with a local ComfyUI usually means switching to a browser, editing parameters in a node graph, then switching back. This plugin folds all of that into the DSH sidebar: the parameter panel stays put and the images land next to your conversation.
 
 ![Krea 2 面板](docs/panel.png)
 
@@ -28,7 +32,8 @@ A DeepSeek Harness plugin that turns a local ComfyUI running Krea 2 into a sideb
 ## 前置条件
 
 1. **ComfyUI** 在跑（默认 `http://127.0.0.1:8188`）。
-2. **Krea 2 所需的节点与模型**已装好，面板默认按下面这套工作流对接：
+2. **GPU**：8 GB 显存可跑 Q2_K 量化（1024² / 8 步在 RTX 5060 Laptop 上约 70 秒），16 GB 以上可以上更大的量化档位。
+3. **Krea 2 所需的节点与模型**已装好，面板默认按下面这套工作流对接：
    - `UnetLoaderGGUF`（GGUF 量化主模型）
    - `CLIPLoader`（`type: krea2`）
    - `VAELoader`
@@ -234,13 +239,17 @@ krea2-panel/
 ## 开发
 
 ```bash
-npm run check   # node --check 所有入口
-npm test        # 工作流构建 + 路径安全
+npm run check   # node --check 所有入口（7 个文件）
+npm test        # 25 个测试：工作流构建、路径安全、工具参数映射
 ```
 
 无构建步骤：`client.js` 是直接被浏览器加载的普通 JS（`window.__ModuleLoader__` 格式），改完刷新页面即可。
 
 Host 侧改了 `index.js` 或 `lib/` 之后，用 `plugin_manager` 把这个插件禁用再启用一次，新模块才会加载。
+
+### CI
+
+GitHub Actions 在每次 push 和 PR 时跑 `npm run check` + `npm test`（Node 22，约 15 秒），徽章在页面顶部。
 
 ### 发布
 
