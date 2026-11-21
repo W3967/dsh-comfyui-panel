@@ -1,5 +1,7 @@
 # Krea 2 Studio · DSH 插件
 
+中文 | [English](README.en.md)
+
 把本机 **Krea 2（ComfyUI）** 接进 DeepSeek Harness：侧栏点一下，选模型、写描述、调参数，直接出图。
 
 A DeepSeek Harness plugin that turns a local ComfyUI running Krea 2 into a sidebar panel: pick the quantized UNet and LoRA, tune size / steps / seed, and generate without leaving the app.
