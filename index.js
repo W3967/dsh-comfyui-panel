@@ -11,6 +11,7 @@
 import { createJobs } from './lib/jobs.js'
 import { PREFIX, createObjectInfoCache, createRoutes } from './lib/routes.js'
 import { createSettings } from './lib/settings.js'
+import { createValuePresets } from './lib/presets.js'
 import { registerGenerateTool } from './lib/tool.js'
 import { createWorkflowStore } from './lib/workflows.js'
 
@@ -28,6 +29,7 @@ export function apply(ctx, rawConfig) {
   const config = rawConfig !== null && typeof rawConfig === 'object' ? rawConfig : {}
   const settings = createSettings({ dshHome: config.dshHome, seed: config })
   const workflows = createWorkflowStore({ dir: settings.dir })
+  const presets = createValuePresets({ dir: settings.dir })
   const objectInfo = createObjectInfoCache()
 
   const jobs = createJobs({
@@ -35,7 +37,7 @@ export function apply(ctx, rawConfig) {
     workflows,
     getObjectInfo: () => objectInfo.get(settings.read().comfyUrl),
   })
-  const handle = createRoutes({ settings, jobs, workflows, objectInfo })
+  const handle = createRoutes({ settings, jobs, workflows, objectInfo, presets })
 
   ctx.effect(() => {
     const dispose = ctx.webServer.register({

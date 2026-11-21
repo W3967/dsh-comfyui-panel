@@ -108,6 +108,27 @@ window.__ModuleLoader__.load({
         'import.invalid': 'JSON 解析失败，请检查是否完整。',
         'import.defaultName': '导入的工作流',
 
+        'queue.title': '队列',
+        'queue.running': '运行中',
+        'queue.pending': '等待中',
+        'queue.empty': '队列是空的。',
+        'queue.clear': '清空等待',
+        'queue.remove': '移除',
+        'queue.unknown': '未知任务',
+        'queue.unreachable': '连不上 ComfyUI，读不到队列。',
+
+        'history.title': '历史图片',
+        'history.empty': 'output 目录里还没有图片。',
+        'history.count': '找到 {n} 张',
+
+        'preset.label': '参数预设',
+        'preset.save': '存为预设',
+        'preset.delete': '删除',
+        'preset.name': '预设名称',
+        'preset.namePh': '例如：宽屏风景',
+        'preset.empty': '还没有预设',
+        'preset.none': '未选择',
+
         'result.title': '结果',
         'result.count': '本次会话 {n} 张',
         'result.seed': '种子 {seed}',
@@ -171,6 +192,27 @@ window.__ModuleLoader__.load({
         'import.cancel': 'Cancel',
         'import.invalid': 'Could not parse that JSON.',
         'import.defaultName': 'Imported workflow',
+
+        'queue.title': 'Queue',
+        'queue.running': 'Running',
+        'queue.pending': 'Pending',
+        'queue.empty': 'The queue is empty.',
+        'queue.clear': 'Clear pending',
+        'queue.remove': 'Remove',
+        'queue.unknown': 'Unknown job',
+        'queue.unreachable': 'ComfyUI is unreachable, so the queue cannot be read.',
+
+        'history.title': 'History',
+        'history.empty': 'No images in the output folder yet.',
+        'history.count': '{n} found',
+
+        'preset.label': 'Preset',
+        'preset.save': 'Save as preset',
+        'preset.delete': 'Delete',
+        'preset.name': 'Preset name',
+        'preset.namePh': 'e.g. wide landscape',
+        'preset.empty': 'No presets yet',
+        'preset.none': 'None',
 
         'result.title': 'Result',
         'result.count': '{n} this session',
@@ -332,6 +374,17 @@ window.__ModuleLoader__.load({
 .k2-chip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.07));color:var(--dsw-alias-label-primary,#f4f4f5)}
 .k2-chip.is-on{background:var(--dsw-alias-interactive-bg-active,rgba(255,255,255,.1));color:var(--dsw-alias-label-primary,#f4f4f5);border-color:var(--dsw-alias-border-l2,rgba(255,255,255,.16))}
 
+.k2-qlist{display:flex;flex-direction:column;gap:4px;max-height:50vh;overflow-y:auto}
+.k2-qrow{display:flex;align-items:center;gap:8px;padding:6px 8px;border-radius:8px;background:var(--dsw-alias-bg-layer-2,rgba(255,255,255,.04));font-size:12.5px}
+.k2-qname{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.k2-qtag{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#8a8a93);padding:1px 6px;border-radius:6px;background:var(--dsw-alias-interactive-bg-active,rgba(255,255,255,.08))}
+.k2-qmeta{flex:none;font-size:11px;color:var(--dsw-alias-label-tertiary,#8a8a93);font-variant-numeric:tabular-nums}
+.k2-dialog-count{font-size:11.5px;font-weight:400;color:var(--dsw-alias-label-tertiary,#8a8a93)}
+.k2-history-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:8px;max-height:56vh;overflow-y:auto}
+.k2-history-item{padding:0;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));border-radius:8px;overflow:hidden;background:var(--dsw-alias-bg-layer-2,#18181d);cursor:pointer;aspect-ratio:1}
+.k2-history-item img{width:100%;height:100%;object-fit:cover;display:block}
+.k2-history-item:hover{border-color:var(--dsw-alias-state-business-primary,#4176E6)}
+
 .k2-alert{display:flex;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 34%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 10%,transparent);color:var(--dsw-alias-state-error-primary,#e5484d);font-size:12px;line-height:1.5}
 
 .k2-stage-head{display:flex;align-items:center;gap:10px;flex:none;min-height:24px}
@@ -400,6 +453,9 @@ window.__ModuleLoader__.load({
       bolt: 'M13.5 2.5 5.5 13.5h5l-1 8 8-11h-5l1-8Z',
       plus: 'M12 5v14 M5 12h14',
       trash: 'M4 7h16 M9 7V5h6v2 M6 7l1 13h10l1-13',
+      list: 'M4 6h16 M4 12h16 M4 18h10',
+      clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7.5V12l3.2 2',
+      check: 'M5 12.5l4.5 4.5L19 7',
     }
 
     function Icon(props) {
@@ -605,6 +661,34 @@ window.__ModuleLoader__.load({
       var importOpen = importOpenPair[0]
       var setImportOpen = importOpenPair[1]
 
+      var queueOpenPair = useState(false)
+      var queueOpen = queueOpenPair[0]
+      var setQueueOpen = queueOpenPair[1]
+
+      var queuePair = useState({ running: [], pending: [], error: '' })
+      var queue = queuePair[0]
+      var setQueue = queuePair[1]
+
+      var historyOpenPair = useState(false)
+      var historyOpen = historyOpenPair[0]
+      var setHistoryOpen = historyOpenPair[1]
+
+      var historyPair = useState({ items: [], error: '' })
+      var history = historyPair[0]
+      var setHistory = historyPair[1]
+
+      var valuePresetsPair = useState([])
+      var valuePresets = valuePresetsPair[0]
+      var setValuePresets = valuePresetsPair[1]
+
+      var presetPickPair = useState('')
+      var presetPick = presetPickPair[0]
+      var setPresetPick = presetPickPair[1]
+
+      var presetDialogPair = useState(false)
+      var presetDialogOpen = presetDialogPair[0]
+      var setPresetDialogOpen = presetDialogPair[1]
+
       var saveTimer = useRef(null)
       var pendingValues = useRef(null)
 
@@ -696,6 +780,69 @@ window.__ModuleLoader__.load({
         [workflowId],
       )
 
+      // Queue polling while its overlay is open.
+      useEffect(
+        function () {
+          if (queueOpen !== true) return undefined
+          var alive = true
+          function load() {
+            getJson(API + 'queue')
+              .then(function (res) {
+                if (alive) setQueue({ running: res.running, pending: res.pending, error: '' })
+              })
+              .catch(function (failure) {
+                if (alive) setQueue({ running: [], pending: [], error: failure.message })
+              })
+          }
+          load()
+          var timer = setInterval(load, 2000)
+          return function () {
+            alive = false
+            clearInterval(timer)
+          }
+        },
+        [queueOpen],
+      )
+
+      // History is a snapshot per open, not a live feed.
+      useEffect(
+        function () {
+          if (historyOpen !== true) return undefined
+          var alive = true
+          getJson(API + 'history?limit=60')
+            .then(function (res) {
+              if (alive) setHistory({ items: res.items, error: '' })
+            })
+            .catch(function (failure) {
+              if (alive) setHistory({ items: [], error: failure.message })
+            })
+          return function () {
+            alive = false
+          }
+        },
+        [historyOpen],
+      )
+
+      // Value presets belong to the selected workflow.
+      useEffect(
+        function () {
+          if (workflowId === null) return undefined
+          var alive = true
+          setPresetPick('')
+          getJson(API + 'presets?workflow=' + encodeURIComponent(workflowId))
+            .then(function (res) {
+              if (alive) setValuePresets(res.presets)
+            })
+            .catch(function () {
+              if (alive) setValuePresets([])
+            })
+          return function () {
+            alive = false
+          }
+        },
+        [workflowId],
+      )
+
       var updateValue = useCallback(
         function (id, value) {
           setValues(function (prev) {
@@ -707,6 +854,55 @@ window.__ModuleLoader__.load({
         },
         [scheduleSave],
       )
+
+      function reloadValuePresets() {
+        if (workflowId === null) return
+        getJson(API + 'presets?workflow=' + encodeURIComponent(workflowId))
+          .then(function (res) {
+            setValuePresets(res.presets)
+          })
+          .catch(function () {
+            // Presets are a convenience; a failed reload leaves the old list.
+          })
+      }
+
+      function applyValuePreset(preset) {
+        setValues(function (previous) {
+          var next = Object.assign({}, previous, preset.values)
+          scheduleSave(next)
+          return next
+        })
+      }
+
+      function saveValuePreset(name) {
+        return postJson(API + 'presets', { workflowId: workflowId, name: name, values: values }).then(function () {
+          setPresetDialogOpen(false)
+          reloadValuePresets()
+        })
+      }
+
+      function removeValuePreset(id) {
+        sendJson('DELETE', API + 'presets?id=' + encodeURIComponent(id))
+          .then(function () {
+            setPresetPick('')
+            reloadValuePresets()
+          })
+          .catch(function (failure) {
+            setError(failure.message)
+          })
+      }
+
+      function clearQueue() {
+        postJson(API + 'queue', { action: 'clear' }).catch(function (failure) {
+          setError(failure.message)
+        })
+      }
+
+      function removeFromQueue(promptId) {
+        postJson(API + 'queue', { action: 'delete', ids: [promptId] }).catch(function (failure) {
+          setError(failure.message)
+        })
+      }
 
       var switchWorkflow = useCallback(
         function (id) {
@@ -1176,6 +1372,70 @@ window.__ModuleLoader__.load({
                 : null,
             ),
 
+            h(
+              'div',
+              { className: 'k2-sec' },
+              h(
+                'div',
+                { className: 'k2-label' },
+                h('span', null, t('preset.label')),
+                h('span', { className: 'k2-grow' }),
+                presetPick !== ''
+                  ? h(
+                      'button',
+                      {
+                        type: 'button',
+                        className: 'k2-iconbtn',
+                        title: t('preset.delete'),
+                        onClick: function () {
+                          removeValuePreset(presetPick)
+                        },
+                      },
+                      h(Icon, { name: 'trash', size: 14 }),
+                    )
+                  : null,
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'k2-iconbtn',
+                    title: t('preset.save'),
+                    disabled: workflow === null,
+                    onClick: function () {
+                      setPresetDialogOpen(true)
+                    },
+                  },
+                  h(Icon, { name: 'plus', size: 14 }),
+                ),
+              ),
+              valuePresets.length === 0
+                ? h('div', { className: 'k2-hint' }, t('preset.empty'))
+                : h(Select, {
+                    options: [''].concat(
+                      valuePresets.map(function (preset) {
+                        return preset.id
+                      }),
+                    ),
+                    value: presetPick,
+                    render: function (id) {
+                      if (id === '') return t('preset.none')
+                      for (var index = 0; index < valuePresets.length; index += 1) {
+                        if (valuePresets[index].id === id) return valuePresets[index].name
+                      }
+                      return id
+                    },
+                    onChange: function (id) {
+                      setPresetPick(id)
+                      for (var index = 0; index < valuePresets.length; index += 1) {
+                        if (valuePresets[index].id === id) {
+                          applyValuePreset(valuePresets[index])
+                          return
+                        }
+                      }
+                    },
+                  }),
+            ),
+
             renderParams(),
 
             error !== '' ? h('div', { className: 'k2-alert', style: { marginTop: '10px' } }, error) : null,
@@ -1279,6 +1539,18 @@ window.__ModuleLoader__.load({
                 'div',
                 { className: 'k2-stage-meta' },
                 results.length > 0 ? h('span', null, t('result.count', { n: results.length })) : null,
+                h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'k2-iconbtn',
+                    title: t('history.title'),
+                    onClick: function () {
+                      setHistoryOpen(true)
+                    },
+                  },
+                  h(Icon, { name: 'clock', size: 14 }),
+                ),
                 currentResult !== null && currentResult.images.length > 0
                   ? h(
                       'button',
@@ -1417,6 +1689,18 @@ window.__ModuleLoader__.load({
               'button',
               {
                 type: 'button',
+                className: 'k2-iconbtn',
+                title: t('queue.title'),
+                onClick: function () {
+                  setQueueOpen(true)
+                },
+              },
+              h(Icon, { name: 'list', size: 15 }),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
                 className: 'k2-iconbtn' + (loading === true ? ' is-spinning' : ''),
                 title: t('comfy.refresh'),
                 onClick: function () {
@@ -1435,6 +1719,157 @@ window.__ModuleLoader__.load({
               },
               onSubmit: importWorkflow,
             })
+          : null,
+        presetDialogOpen === true
+          ? h(PresetDialog, {
+              onCancel: function () {
+                setPresetDialogOpen(false)
+              },
+              onSubmit: saveValuePreset,
+            })
+          : null,
+        queueOpen === true
+          ? h(
+              'div',
+              {
+                className: 'k2-modal',
+                onClick: function (event) {
+                  if (event.target === event.currentTarget) setQueueOpen(false)
+                },
+              },
+              h(
+                'div',
+                { className: 'k2-dialog' },
+                h('div', { className: 'k2-dialog-title' }, t('queue.title')),
+                queue.error !== ''
+                  ? h('div', { className: 'k2-alert' }, queue.error)
+                  : queue.running.length === 0 && queue.pending.length === 0
+                    ? h('div', { className: 'k2-hint' }, t('queue.empty'))
+                    : h(
+                        'div',
+                        { className: 'k2-qlist' },
+                        queue.running.map(function (item) {
+                          return h(
+                            'div',
+                            { key: item.promptId, className: 'k2-qrow' },
+                            h('span', { className: 'k2-qname' }, item.workflowName || t('queue.unknown')),
+                            h('span', { className: 'k2-qtag' }, t('queue.running')),
+                            h('span', { className: 'k2-qmeta' }, Math.round((item.elapsedMs || 0) / 1000) + 's'),
+                          )
+                        }),
+                        queue.pending.map(function (item, index) {
+                          return h(
+                            'div',
+                            { key: item.promptId, className: 'k2-qrow' },
+                            h('span', { className: 'k2-qname' }, item.workflowName || t('queue.unknown')),
+                            h('span', { className: 'k2-qtag' }, t('queue.pending') + ' #' + (index + 1)),
+                            h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'k2-iconbtn',
+                                title: t('queue.remove'),
+                                onClick: function () {
+                                  removeFromQueue(item.promptId)
+                                },
+                              },
+                              h(Icon, { name: 'trash', size: 13 }),
+                            ),
+                          )
+                        }),
+                      ),
+                h(
+                  'div',
+                  { className: 'k2-dialog-actions' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'k2-btn is-ghost',
+                      disabled: queue.pending.length === 0,
+                      onClick: clearQueue,
+                    },
+                    t('queue.clear'),
+                  ),
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'k2-btn',
+                      onClick: function () {
+                        setQueueOpen(false)
+                      },
+                    },
+                    t('action.close'),
+                  ),
+                ),
+              ),
+            )
+          : null,
+        historyOpen === true
+          ? h(
+              'div',
+              {
+                className: 'k2-modal',
+                onClick: function (event) {
+                  if (event.target === event.currentTarget) setHistoryOpen(false)
+                },
+              },
+              h(
+                'div',
+                { className: 'k2-dialog' },
+                h(
+                  'div',
+                  { className: 'k2-dialog-title' },
+                  t('history.title'),
+                  history.items.length > 0
+                    ? h(
+                        'span',
+                        { className: 'k2-dialog-count' },
+                        ' · ' + t('history.count', { n: history.items.length }),
+                      )
+                    : null,
+                ),
+                history.error !== ''
+                  ? h('div', { className: 'k2-alert' }, history.error)
+                  : history.items.length === 0
+                    ? h('div', { className: 'k2-hint' }, t('history.empty'))
+                    : h(
+                        'div',
+                        { className: 'k2-history-grid' },
+                        history.items.map(function (item) {
+                          return h(
+                            'button',
+                            {
+                              key: item.path,
+                              type: 'button',
+                              className: 'k2-history-item',
+                              title: item.name,
+                              onClick: function () {
+                                setZoom(imageUrl(item.path))
+                              },
+                            },
+                            h('img', { src: imageUrl(item.path), alt: '' }),
+                          )
+                        }),
+                      ),
+                h(
+                  'div',
+                  { className: 'k2-dialog-actions' },
+                  h(
+                    'button',
+                    {
+                      type: 'button',
+                      className: 'k2-btn',
+                      onClick: function () {
+                        setHistoryOpen(false)
+                      },
+                    },
+                    t('action.close'),
+                  ),
+                ),
+              ),
+            )
           : null,
         zoom !== null
           ? h(
@@ -1558,6 +1993,91 @@ window.__ModuleLoader__.load({
                 onClick: submit,
               },
               t('import.submit'),
+            ),
+          ),
+        ),
+      )
+    }
+
+    /** Name-the-current-parameters dialog. */
+    function PresetDialog(props) {
+      var namePair = useState('')
+      var name = namePair[0]
+      var setName = namePair[1]
+
+      var errorPair = useState('')
+      var error = errorPair[0]
+      var setError = errorPair[1]
+
+      var busyPair = useState(false)
+      var busy = busyPair[0]
+      var setBusy = busyPair[1]
+
+      function submit() {
+        if (busy === true) return
+        setBusy(true)
+        setError('')
+        Promise.resolve()
+          .then(function () {
+            return props.onSubmit(name.trim())
+          })
+          .catch(function (failure) {
+            setError(failure.message || String(failure))
+          })
+          .finally(function () {
+            setBusy(false)
+          })
+      }
+
+      return h(
+        'div',
+        {
+          className: 'k2-modal',
+          onClick: function (event) {
+            if (event.target === event.currentTarget) props.onCancel()
+          },
+        },
+        h(
+          'div',
+          { className: 'k2-dialog' },
+          h('div', { className: 'k2-dialog-title' }, t('preset.save')),
+          h(Label, { text: t('preset.name') }),
+          h('input', {
+            className: 'k2-input',
+            value: name,
+            placeholder: t('preset.namePh'),
+            spellCheck: false,
+            onChange: function (event) {
+              setName(event.target.value)
+            },
+            onKeyDown: function (event) {
+              if (event.key === 'Enter') submit()
+            },
+          }),
+          error !== '' ? h('div', { className: 'k2-alert' }, error) : null,
+          h(
+            'div',
+            { className: 'k2-dialog-actions' },
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'k2-btn is-ghost',
+                onClick: function () {
+                  props.onCancel()
+                },
+              },
+              t('import.cancel'),
+            ),
+            h(
+              'button',
+              {
+                type: 'button',
+                className: 'k2-btn',
+                disabled: busy === true,
+                onClick: submit,
+              },
+              t('preset.save'),
             ),
           ),
         ),

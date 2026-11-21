@@ -34,6 +34,9 @@
 - **两种输入**：面板点着用，或者让模型通过 agent 工具调用，两者共用同一条任务队列。
 - **参数自动识别**：正负提示词、种子、步数、CFG、尺寸、模型、LoRA 强度、图片输入。
 - **任务式生成**：提交即返回，面板轮询进度，支持取消，可看大图、复制路径。
+- **队列**：看 ComfyUI 队列里的**所有**任务（不只插件提交的），可移除等待项、清空等待。
+- **历史图片**：浏览 `output/` 目录里的全部生成图，点开看大图。
+- **参数预设**：把当前这套参数存成命名预设，下次一键套用。
 - **跟随宿主主题**：只用 `--dsw-alias-*` 设计令牌，亮色/暗色自动适配。
 
 ## 前置条件
@@ -189,6 +192,7 @@ comfyui-panel/
 │   ├── comfy.js          ComfyUI HTTP 客户端（不含任何节点图）
 │   ├── workflows.js      参数发现、图合并、内置预设、用户预设存储
 │   ├── settings.js       连接信息 + 当前工作流 + 各工作流的参数值
+│   ├── presets.js        参数预设（一组值，不是一张图）
 │   ├── jobs.js           任务状态机（连工作流一起提交、轮询、取消）
 │   ├── routes.js         /krea2/* HTTP 接口、object_info 缓存、图片路径校验
 │   └── tool.js           krea2_workflows / krea2_generate
@@ -214,6 +218,11 @@ comfyui-panel/
 | GET | `/krea2/job?id=` | 单个任务状态 |
 | GET | `/krea2/jobs` | 最近任务 |
 | POST | `/krea2/cancel` | 取消任务 |
+| GET | `/krea2/queue` | ComfyUI 队列（运行中 + 等待中） |
+| POST | `/krea2/queue` | 移除等待项或清空队列 |
+| GET | `/krea2/history?limit=` | 扫描 `output/` 目录的图片 |
+| GET/POST | `/krea2/presets` | 读 / 保存参数预设 |
+| DELETE | `/krea2/presets?id=` | 删除参数预设 |
 | GET | `/krea2/image?path=` | 生成图字节流 |
 
 `?path=` 会重新解析并校验落在 ComfyUI 的 `output` / `temp` 之内，`..` 穿越与外部路径一律 404。
@@ -256,7 +265,7 @@ git push -u origin main
 - 单次生成上限 10 分钟。
 - 图片输入只接受本机绝对路径，暂不支持拖拽上传。
 - **ComfyUI 会缓存执行结果**：参数完全相同的第二次提交会复用上次的输出，可能一两秒就返回（截图里那个「1.5s」就是这么来的）。这是 ComfyUI 自身的行为——换一个种子或改一个字就会重新计算。
-- 面板不做图片管理，生成的图留在 ComfyUI 的 `output` 目录。
+- 面板不做图片管理：历史浏览是只读的，能看能开大图，但不能在面板里删除或移动文件。
 
 ## 注意事项
 
