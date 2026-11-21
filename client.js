@@ -33,6 +33,20 @@ window.__ModuleLoader__.load({
       other: 'group.other',
     }
 
+    /**
+     * Ratio presets for a width/height pair. Values assume a ~1 MP budget
+     * (1024² ); presets outside the workflow's declared range are hidden.
+     */
+    var SIZE_PRESETS = [
+      { key: '1:1', label: '1:1 · 1024²', w: 1024, h: 1024 },
+      { key: '4:3', label: '4:3 · 1152×864', w: 1152, h: 864 },
+      { key: '3:4', label: '3:4 · 864×1152', w: 864, h: 1152 },
+      { key: '16:9', label: '16:9 · 1280×720', w: 1280, h: 720 },
+      { key: '9:16', label: '9:16 · 720×1280', w: 720, h: 1280 },
+      { key: '3:2', label: '3:2 · 1152×768', w: 1152, h: 768 },
+      { key: '2:3', label: '2:3 · 768×1152', w: 768, h: 1152 },
+    ]
+
     /* ------------------------------- i18n ------------------------------- */
 
     var DICTS = {
@@ -92,6 +106,7 @@ window.__ModuleLoader__.load({
         'import.submit': '导入',
         'import.cancel': '取消',
         'import.invalid': 'JSON 解析失败，请检查是否完整。',
+        'import.defaultName': '导入的工作流',
 
         'result.title': '结果',
         'result.count': '本次会话 {n} 张',
@@ -155,6 +170,7 @@ window.__ModuleLoader__.load({
         'import.submit': 'Import',
         'import.cancel': 'Cancel',
         'import.invalid': 'Could not parse that JSON.',
+        'import.defaultName': 'Imported workflow',
 
         'result.title': 'Result',
         'result.count': '{n} this session',
@@ -310,6 +326,11 @@ window.__ModuleLoader__.load({
 .k2-btn.is-small{height:26px;padding:0 9px;font-size:12px}
 .k2-btn.is-ghost{border-color:transparent;background:transparent;color:var(--dsw-alias-label-secondary,#a1a1aa)}
 .k2-btn.is-ghost:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.07));color:var(--dsw-alias-label-primary,#f4f4f5)}
+
+.k2-chips{display:flex;flex-wrap:wrap;gap:6px}
+.k2-chip{height:24px;padding:0 9px;border:1px solid var(--dsw-alias-border-l1,rgba(255,255,255,.08));border-radius:7px;background:transparent;color:var(--dsw-alias-label-secondary,#a1a1aa);font:inherit;font-size:11.5px;cursor:pointer;white-space:nowrap}
+.k2-chip:hover{background:var(--dsw-alias-interactive-bg-hover,rgba(255,255,255,.07));color:var(--dsw-alias-label-primary,#f4f4f5)}
+.k2-chip.is-on{background:var(--dsw-alias-interactive-bg-active,rgba(255,255,255,.1));color:var(--dsw-alias-label-primary,#f4f4f5);border-color:var(--dsw-alias-border-l2,rgba(255,255,255,.16))}
 
 .k2-alert{display:flex;gap:8px;padding:9px 11px;border-radius:8px;border:1px solid color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 34%,transparent);background:color-mix(in srgb,var(--dsw-alias-state-error-primary,#e5484d) 10%,transparent);color:var(--dsw-alias-state-error-primary,#e5484d);font-size:12px;line-height:1.5}
 
@@ -975,6 +996,58 @@ window.__ModuleLoader__.load({
         })
       }
 
+      /* -------- ratio presets for a width/height pair -------- */
+
+      function renderSizePresets(sizeParams) {
+        var widthParam = null
+        var heightParam = null
+        for (var index = 0; index < sizeParams.length; index += 1) {
+          if (sizeParams[index].field === 'width') widthParam = sizeParams[index]
+          if (sizeParams[index].field === 'height') heightParam = sizeParams[index]
+        }
+        if (widthParam === null || heightParam === null) return null
+
+        function within(value, param) {
+          if (Number.isFinite(param.min) && value < param.min) return false
+          if (Number.isFinite(param.max) && value > param.max) return false
+          return true
+        }
+
+        var usable = SIZE_PRESETS.filter(function (preset) {
+          return within(preset.w, widthParam) && within(preset.h, heightParam)
+        })
+        if (usable.length === 0) return null
+
+        var currentWidth = Number(values[widthParam.id])
+        var currentHeight = Number(values[heightParam.id])
+
+        return h(
+          'div',
+          { className: 'k2-chips' },
+          usable.map(function (preset) {
+            var active = currentWidth === preset.w && currentHeight === preset.h
+            return h(
+              'button',
+              {
+                key: preset.key,
+                type: 'button',
+                className: 'k2-chip' + (active ? ' is-on' : ''),
+                onClick: function () {
+                  setValues(function (previous) {
+                    var next = Object.assign({}, previous)
+                    next[widthParam.id] = preset.w
+                    next[heightParam.id] = preset.h
+                    scheduleSave(next)
+                    return next
+                  })
+                },
+              },
+              preset.label,
+            )
+          }),
+        )
+      }
+
       /* -------- grouped parameter form -------- */
 
       function renderParams() {
@@ -1009,11 +1082,17 @@ window.__ModuleLoader__.load({
         return GROUP_ORDER.filter(function (group) {
           return grouped[group] !== undefined
         }).map(function (group) {
-          return h(
-            Section,
-            { key: group, title: t(GROUP_LABEL[group]) },
-            grouped[group].map(function (param) {
-              return h(
+          var children = []
+
+          // A size group that carries a width/height pair gets ratio presets.
+          if (group === 'size') {
+            var presets = renderSizePresets(grouped[group])
+            if (presets !== null) children.push(presets)
+          }
+
+          grouped[group].forEach(function (param) {
+            children.push(
+              h(
                 'div',
                 { key: param.id, style: { display: 'flex', flexDirection: 'column', gap: '6px' } },
                 param.control === 'toggle'
@@ -1029,9 +1108,11 @@ window.__ModuleLoader__.load({
                       h(Label, { text: pick(param.label, param.labelEn) }),
                       renderControl(param),
                     ),
-              )
-            }),
-          )
+              ),
+            )
+          })
+
+          return h(Section, { key: group, title: t(GROUP_LABEL[group]) }, children)
         })
       }
 
@@ -1412,7 +1493,7 @@ window.__ModuleLoader__.load({
         setError('')
         Promise.resolve()
           .then(function () {
-            return props.onSubmit(name.trim() === '' ? 'Imported workflow' : name.trim(), json)
+            return props.onSubmit(name.trim() === '' ? t('import.defaultName') : name.trim(), json)
           })
           .catch(function (failure) {
             setError(failure.message || String(failure))
