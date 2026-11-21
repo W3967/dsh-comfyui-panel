@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Krea 2 Studio",
+    "description": "Generate images with a local Krea 2 ComfyUI: pick the quantized UNet, LoRA and sampler, tune size, steps and seed, and preview the result in a sidebar panel."
+  }
+}

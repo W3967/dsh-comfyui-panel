@@ -1,0 +1,60 @@
+{
+  "name": "dsh-krea2-panel",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Krea 2 image studio for DeepSeek Harness: pick quantized UNet / LoRA, tune size, steps and seed, and generate from a sidebar panel backed by a local ComfyUI. · DSH 里的 Krea 2 图像生成面板：可切换量化模型与 LoRA，调整尺寸/步数/种子，直接出图。",
+  "license": "MIT",
+  "author": "W3967",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/W3967/dsh-krea2-panel.git"
+  },
+  "homepage": "https://github.com/W3967/dsh-krea2-panel#readme",
+  "bugs": {
+    "url": "https://github.com/W3967/dsh-krea2-panel/issues"
+  },
+  "keywords": [
+    "dsh",
+    "deepseek-harness",
+    "dsh-plugin",
+    "cordis",
+    "comfyui",
+    "krea",
+    "image-generation",
+    "text-to-image"
+  ],
+  "exports": {
+    ".": "./index.js",
+    "./client": "./client.js",
+    "./cordis.patch.yml": "./cordis.patch.yml",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg",
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "index.js",
+    "client.js",
+    "lib/**/*.js",
+    "cordis.patch.yml",
+    "locale/*.json",
+    "icon.svg",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "check": "node --check index.js && node --check client.js && node --check lib/comfy.js && node --check lib/settings.js && node --check lib/jobs.js && node --check lib/routes.js && node --check lib/tool.js",
+    "test": "node test/workflow.test.mjs && node test/paths.test.mjs && node test/tool.test.mjs"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    },
+    "client": {
+      "platform": "web",
+      "immediately": true,
+      "inject": [
+        "@deepseek-ai/dsh-client-ui-conversation"
+      ]
+    }
+  }
+}

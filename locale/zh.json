@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Krea 2 工作台",
+    "description": "对接本机 Krea 2（ComfyUI）出图：选择量化模型、LoRA 与采样器，调整尺寸、步数和种子，在侧栏面板里直接生成并预览。"
+  }
+}
