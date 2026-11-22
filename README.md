@@ -37,6 +37,7 @@
 - **队列**：看 ComfyUI 队列里的**所有**任务（不只插件提交的），可移除等待项、清空等待。
 - **历史图片**：浏览 `output/` 目录里的全部生成图；点开看大图，可**恢复当时的参数**、在资源管理器里定位、删除。
 - **参数预设**：把当前这套参数存成命名预设，下次一键套用。
+- **一键启动**：ComfyUI 没开时，面板上直接有个启动按钮，不用切到别的窗口双击 bat。
 - **跟随宿主主题**：只用 `--dsw-alias-*` 设计令牌，亮色/暗色自动适配。
 
 ## 前置条件
@@ -46,6 +47,8 @@
 3. **工作流能跑通**：先在 ComfyUI 网页里确认这套图能出图，再导进来。
 
 ## 可选：让 ComfyUI 后台运行
+
+> 只在 DSH 里用的话，面板上的**启动按钮**就够了（ComfyUI 没开时它会出现）。这一节是给「不想开面板 / 想让 ComfyUI 独立常驻」的情况。
 
 便携版 ComfyUI 双击 `run_nvidia_gpu.bat` 会弹出一个命令行窗口，**关掉窗口服务就停了** —— 很多人第一次用时都踩过这个坑。
 
@@ -196,6 +199,7 @@ comfyui-panel/
 │   ├── jobs.js           任务状态机（连工作流一起提交、轮询、取消）
 │   ├── routes.js         /krea2/* HTTP 接口、object_info 缓存、图片路径校验
 │   ├── recover.js        读 PNG 里的工作流元数据，还原参数
+│   ├── launch.js         没启动时拉起本机 ComfyUI
 │   └── tool.js           krea2_workflows / krea2_generate
 ├── client.js             侧栏图标 + 主面板（动态表单）
 ├── cordis.patch.yml      bundle 补丁
@@ -211,6 +215,7 @@ comfyui-panel/
 | 方法 | 路径 | 作用 |
 |---|---|---|
 | GET | `/krea2/status` | ComfyUI 状态、预设列表、当前设置 |
+| POST | `/krea2/start` | 启动本机 ComfyUI（便携版） |
 | GET | `/krea2/workflow?id=` | 某个工作流的参数发现结果 + 保存的值 |
 | POST | `/krea2/workflow` | 新增/覆盖用户预设 |
 | DELETE | `/krea2/workflow?id=` | 删除用户预设 |
@@ -270,6 +275,7 @@ git push -u origin main
 - 图片输入只接受本机绝对路径，暂不支持拖拽上传。
 - **ComfyUI 会缓存执行结果**：参数完全相同的第二次提交会复用上次的输出，可能一两秒就返回（截图里那个「1.5s」就是这么来的）。这是 ComfyUI 自身的行为——换一个种子或改一个字就会重新计算。
 - 历史图片管理只覆盖 `output/` 目录：能删除、能在资源管理器里定位，但不能重命名或移动。
+- **一键启动只支持便携版** ComfyUI（目录旁有 `python_embeded/`）；源码安装、conda 环境或远程 ComfyUI 需要自己启动。
 
 ## 注意事项
 

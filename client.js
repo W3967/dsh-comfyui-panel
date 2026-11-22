@@ -86,6 +86,8 @@ window.__ModuleLoader__.load({
         'action.recover': '恢复参数',
         'action.reveal': '打开文件夹',
         'action.delete': '删除',
+        'action.startComfy': '启动 ComfyUI',
+        'action.starting': '正在启动…',
 
         'state.queued': '排队中',
         'state.running': '生成中',
@@ -174,6 +176,8 @@ window.__ModuleLoader__.load({
         'action.recover': 'Restore parameters',
         'action.reveal': 'Show in folder',
         'action.delete': 'Delete',
+        'action.startComfy': 'Start ComfyUI',
+        'action.starting': 'Starting…',
 
         'state.queued': 'Queued',
         'state.running': 'Generating',
@@ -469,6 +473,7 @@ window.__ModuleLoader__.load({
       clock: 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18Z M12 7.5V12l3.2 2',
       check: 'M5 12.5l4.5 4.5L19 7',
       folder: 'M3.5 6.5h6l2 2.5h9v10h-17z',
+      power: 'M12 4v8 M7.1 7.2a7 7 0 1 0 9.8 0',
     }
 
     function Icon(props) {
@@ -673,6 +678,10 @@ window.__ModuleLoader__.load({
       var importOpenPair = useState(false)
       var importOpen = importOpenPair[0]
       var setImportOpen = importOpenPair[1]
+
+      var startingPair = useState(false)
+      var starting = startingPair[0]
+      var setStarting = startingPair[1]
 
       var queueOpenPair = useState(false)
       var queueOpen = queueOpenPair[0]
@@ -907,6 +916,26 @@ window.__ModuleLoader__.load({
           })
           .catch(function (failure) {
             setError(failure.message)
+          })
+      }
+
+      /** Ask the Host to launch a local ComfyUI, then re-read the status. */
+      function startComfy() {
+        if (starting === true) return
+        setStarting(true)
+        setError('')
+        postJson(API + 'start', {})
+          .then(function (res) {
+            if (res.online !== true) {
+              setError('ComfyUI 已经拉起来了，但还没就绪。等几秒再点刷新。')
+            }
+            refresh(true)
+          })
+          .catch(function (failure) {
+            setError(failure.message)
+          })
+          .finally(function () {
+            setStarting(false)
           })
       }
 
@@ -1668,6 +1697,22 @@ window.__ModuleLoader__.load({
                         h(Icon, { name: 'image', size: 34 }),
                         h('strong', null, online === false ? t('comfy.offline') : t('empty.title')),
                         h('span', null, online === false ? t('empty.offline') : t('empty.body')),
+                        online === false
+                          ? h(
+                              'button',
+                              {
+                                type: 'button',
+                                className: 'k2-btn' + (starting === true ? ' is-primary' : ''),
+                                style: { marginTop: '10px' },
+                                disabled: starting === true,
+                                onClick: startComfy,
+                              },
+                              starting === true
+                                ? h('span', null, t('action.starting'))
+                                : h(Icon, { name: 'power', size: 14 }),
+                              starting === true ? null : h('span', null, t('action.startComfy')),
+                            )
+                          : null,
                       ),
               ),
               results.length > 0
@@ -1752,6 +1797,19 @@ window.__ModuleLoader__.load({
               h('span', { className: 'k2-dot' }),
               h('span', null, statusText),
             ),
+            online === false && loading === false
+              ? h(
+                  'button',
+                  {
+                    type: 'button',
+                    className: 'k2-iconbtn',
+                    title: t('action.startComfy'),
+                    disabled: starting === true,
+                    onClick: startComfy,
+                  },
+                  h(Icon, { name: 'power', size: 15 }),
+                )
+              : null,
             h(
               'button',
               {
