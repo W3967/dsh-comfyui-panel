@@ -88,6 +88,8 @@ window.__ModuleLoader__.load({
         'action.delete': '删除',
         'action.startComfy': '启动 ComfyUI',
         'action.starting': '正在启动…',
+        'action.stopComfy': '关闭 ComfyUI（释放显存）',
+        'action.stopping': '正在关闭…',
 
         'state.queued': '排队中',
         'state.running': '生成中',
@@ -178,6 +180,8 @@ window.__ModuleLoader__.load({
         'action.delete': 'Delete',
         'action.startComfy': 'Start ComfyUI',
         'action.starting': 'Starting…',
+        'action.stopComfy': 'Stop ComfyUI and free VRAM',
+        'action.stopping': 'Stopping…',
 
         'state.queued': 'Queued',
         'state.running': 'Generating',
@@ -474,6 +478,7 @@ window.__ModuleLoader__.load({
       check: 'M5 12.5l4.5 4.5L19 7',
       folder: 'M3.5 6.5h6l2 2.5h9v10h-17z',
       power: 'M12 4v8 M7.1 7.2a7 7 0 1 0 9.8 0',
+      powerOff: 'M12 4v8 M7.1 7.2a7 7 0 1 0 9.8 0 M3.5 3.5l17 17',
     }
 
     function Icon(props) {
@@ -682,6 +687,10 @@ window.__ModuleLoader__.load({
       var startingPair = useState(false)
       var starting = startingPair[0]
       var setStarting = startingPair[1]
+
+      var stoppingPair = useState(false)
+      var stopping = stoppingPair[0]
+      var setStopping = stoppingPair[1]
 
       var queueOpenPair = useState(false)
       var queueOpen = queueOpenPair[0]
@@ -936,6 +945,26 @@ window.__ModuleLoader__.load({
           })
           .finally(function () {
             setStarting(false)
+          })
+      }
+
+      /** Unload the models and stop a local ComfyUI. */
+      function stopComfy() {
+        if (stopping === true) return
+        setStopping(true)
+        setError('')
+        postJson(API + 'stop', {})
+          .then(function (res) {
+            if (res.killed === 0 && res.wasOnline === true) {
+              setError('模型已卸载，但没找到 ComfyUI 进程（可能是别的方式启动的）。')
+            }
+            refresh(true)
+          })
+          .catch(function (failure) {
+            setError(failure.message)
+          })
+          .finally(function () {
+            setStopping(false)
           })
       }
 
@@ -1797,17 +1826,19 @@ window.__ModuleLoader__.load({
               h('span', { className: 'k2-dot' }),
               h('span', null, statusText),
             ),
-            online === false && loading === false
+            loading === false
               ? h(
                   'button',
                   {
                     type: 'button',
                     className: 'k2-iconbtn',
-                    title: t('action.startComfy'),
-                    disabled: starting === true,
-                    onClick: startComfy,
+                    title: online === false ? t('action.startComfy') : t('action.stopComfy'),
+                    disabled: starting === true || stopping === true,
+                    onClick: online === false ? startComfy : stopComfy,
                   },
-                  h(Icon, { name: 'power', size: 15 }),
+                  online === false
+                    ? h(Icon, { name: 'power', size: 15 })
+                    : h(Icon, { name: 'powerOff', size: 15 }),
                 )
               : null,
             h(

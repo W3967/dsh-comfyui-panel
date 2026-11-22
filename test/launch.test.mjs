@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import path from 'node:path'
 import test from 'node:test'
 
-import { findPython, isLocalAddress, launchComfyUI } from '../lib/launch.js'
+import { findPython, isLocalAddress, launchComfyUI, stopComfyUI } from '../lib/launch.js'
 
 /** A port nothing listens on, so the pre-flight probe fails instantly. */
 const DEAD_URL = 'http://127.0.0.1:1'
@@ -84,4 +84,25 @@ test('refuses a source install with no embedded python', async (t) => {
     () => launchComfyUI({ comfyRoot, comfyUrl: DEAD_URL, waitMs: 1000 }),
     /python_embeded/,
   )
+})
+
+test('stopping an offline ComfyUI still sweeps for a stale process', async () => {
+  let killerCalls = 0
+  const result = await stopComfyUI({
+    comfyUrl: DEAD_URL,
+    killer: async () => {
+      killerCalls += 1
+      return 2
+    },
+  })
+
+  assert.equal(result.wasOnline, false)
+  assert.equal(result.unloaded, false)
+  assert.equal(result.killed, 2)
+  assert.equal(killerCalls, 1, 'the killer runs even when nothing was listening')
+})
+
+test('the killer result is passed through', async () => {
+  const none = await stopComfyUI({ comfyUrl: DEAD_URL, killer: async () => 0 })
+  assert.equal(none.killed, 0)
 })

@@ -37,7 +37,7 @@ A node class the rules do not recognise is not an error — it degrades to a gen
 - **Queue**: see every task ComfyUI has queued, not just this plugin's; drop pending items or clear them.
 - **History**: browse every image in the `output/` folder; open one full size, **restore the parameters it was generated with**, reveal it in Explorer, or delete it.
 - **Parameter presets**: save the current set of values under a name and reapply it later.
-- **Start ComfyUI from the panel**: when it is not running, a button in the panel launches it — no need to find a bat file in another window.
+- **Start and stop from the panel**: launch ComfyUI when it is not running; stop it when you are done — models unload first (freeing VRAM), then the process stops.
 - **Follows the host theme**: only `--dsw-alias-*` design tokens.
 
 ## Requirements
@@ -216,6 +216,7 @@ comfyui-panel/
 |---|---|---|
 | GET | `/krea2/status` | ComfyUI state, preset list, current settings |
 | POST | `/krea2/start` | Start a local portable ComfyUI |
+| POST | `/krea2/stop` | Unload models and stop that ComfyUI |
 | GET | `/krea2/workflow?id=` | Discovered parameters and saved values for one preset |
 | POST | `/krea2/workflow` | Create or replace a user preset |
 | DELETE | `/krea2/workflow?id=` | Delete a user preset |
@@ -275,7 +276,8 @@ git push -u origin main
 - Image inputs take an absolute local path; drag-and-drop upload is not supported yet.
 - **ComfyUI caches executions**: a second submission with identical parameters reuses the previous output and can return in a second or two (that is where the "1.5s" in the screenshot comes from). That is ComfyUI's own behaviour — change the seed or a single word and it recomputes.
 - Image management covers the `output/` folder only: delete and reveal in Explorer work, rename and move do not.
-- **One-click start works for the portable build only** (a `python_embeded/` next to the directory); source installs, conda environments and remote ComfyUI need to be started by hand.
+- **Start/stop is local only**: starting also requires the portable build (a `python_embeded/` next to the directory); source installs, conda environments and remote ComfyUI manage their own process.
+- Stopping checks the queue first: any running job — this plugin's or anything else in ComfyUI's queue — makes it refuse with HTTP 409, so it never kills work in progress.
 
 ## Notes
 
