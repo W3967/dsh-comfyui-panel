@@ -37,7 +37,23 @@ export function apply(ctx, rawConfig) {
     workflows,
     getObjectInfo: () => objectInfo.get(settings.read().comfyUrl),
   })
-  const handle = createRoutes({ settings, jobs, workflows, objectInfo, presets })
+  const handle = createRoutes({
+    settings,
+    jobs,
+    workflows,
+    objectInfo,
+    presets,
+    // Late-bound on purpose: the connection service may arrive after this
+    // plugin loads, and a profile without it must keep working (the routes
+    // then fall back to the loopback + same-origin fence).
+    getConnection: () => {
+      try {
+        return ctx.get('connection')
+      } catch {
+        return undefined
+      }
+    },
+  })
 
   ctx.effect(() => {
     const dispose = ctx.webServer.register({
