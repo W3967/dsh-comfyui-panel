@@ -1,10 +1,10 @@
-# dsh-comfyui-panel: a generic ComfyUI front end for DeepSeek Harness.
+# dsh-workflow-form: a generic ComfyUI front end for DeepSeek Harness.
 # `config` seeds the settings before the panel saves anything; values saved
 # from the panel take precedence. Point `comfyRoot` at the ComfyUI directory
 # that holds `models/`, `input/` and `output/`.
 - insert:
     - id: krea2
-      name: dsh-comfyui-panel
+      name: dsh-workflow-form
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: ''

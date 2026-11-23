@@ -1,6 +1,6 @@
 # ComfyUI Studio · DeepSeek Harness plugin
 
-[![test](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml)
+[![test](https://github.com/W3967/dsh-workflow-form/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-workflow-form/actions/workflows/test.yml)
 
 [中文](README.md) | English
 
@@ -68,7 +68,7 @@ Both scripts are a dozen lines each: start `ComfyUI\main.py` through `python.exe
 ### Option 1: local directory (development)
 
 ```bash
-git clone https://github.com/W3967/dsh-comfyui-panel.git
+git clone https://github.com/W3967/dsh-workflow-form.git
 ```
 
 In Harness, run `plugin_manager` with `install_bundle` and pass the absolute path of that directory.
@@ -80,7 +80,7 @@ Put the package in the profile's `node_modules` and add one row to `cordis.patch
 ```yaml
 - insert:
     - id: krea2
-      name: dsh-comfyui-panel
+      name: dsh-workflow-form
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: 'D:\AI\ComfyUI\ComfyUI_windows_portable\ComfyUI'
@@ -189,7 +189,7 @@ Installing both leaves two near-identical capabilities in the tool list, the mod
 ## Architecture
 
 ```
-comfyui-panel/
+workflow-form/
 ├── index.js              Host half: wires settings, presets, routes, tools
 ├── lib/
 │   ├── comfy.js          ComfyUI HTTP client (contains no node graph at all)
@@ -261,7 +261,7 @@ git init
 git add -A
 git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
-git remote add origin https://github.com/W3967/dsh-comfyui-panel.git
+git remote add origin https://github.com/W3967/dsh-workflow-form.git
 git branch -M main
 git push -u origin main
 ```

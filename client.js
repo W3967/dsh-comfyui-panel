@@ -1,5 +1,5 @@
 /**
- * dsh-comfyui-panel — Web Client half.
+ * dsh-workflow-form — Web Client half.
  *
  * Registers a sidebar entry and the main panel behind it. The panel is a
  * generic ComfyUI front end: pick a workflow preset, fill the form generated
@@ -7,7 +7,7 @@
  */
 
 window.__ModuleLoader__.load({
-  id: 'dsh-comfyui-panel',
+  id: 'dsh-workflow-form',
   factory: function (require) {
     'use strict'
 
@@ -2304,7 +2304,7 @@ window.__ModuleLoader__.load({
     function apply(ctx) {
       ctx.effect(function () {
         var style = document.createElement('style')
-        style.dataset.plugin = 'dsh-comfyui-panel'
+        style.dataset.plugin = 'dsh-workflow-form'
         style.textContent = STYLE
         document.head.appendChild(style)
         return function () {
@@ -2320,13 +2320,13 @@ window.__ModuleLoader__.load({
         typeof locale.bind === 'function'
       ) {
         ctx.effect(function () {
-          var dispose = locale.register('dsh-comfyui-panel', DICTS)
+          var dispose = locale.register('dsh-workflow-form', DICTS)
           return function () {
             if (typeof dispose === 'function') dispose()
           }
         })
         try {
-          var bound = locale.bind('dsh-comfyui-panel')
+          var bound = locale.bind('dsh-workflow-form')
           if (typeof bound === 'function') localeTranslate = bound
         } catch (failure) {
           localeTranslate = null
@@ -2361,7 +2361,7 @@ window.__ModuleLoader__.load({
     }
 
     return {
-      name: 'dsh-comfyui-panel',
+      name: 'dsh-workflow-form',
       inject: ['slots', 'locale'],
       apply: apply,
     }

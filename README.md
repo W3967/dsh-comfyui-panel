@@ -1,6 +1,6 @@
 # ComfyUI 工作台 · DSH 插件
 
-[![test](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-comfyui-panel/actions/workflows/test.yml)
+[![test](https://github.com/W3967/dsh-workflow-form/actions/workflows/test.yml/badge.svg)](https://github.com/W3967/dsh-workflow-form/actions/workflows/test.yml)
 
 中文 | [English](README.en.md)
 
@@ -68,7 +68,7 @@
 ### 方式一：本地目录（开发用）
 
 ```bash
-git clone https://github.com/W3967/dsh-comfyui-panel.git
+git clone https://github.com/W3967/dsh-workflow-form.git
 ```
 
 在 Harness 里用 `plugin_manager` 的 `install_bundle`，目标填这个目录的绝对路径。
@@ -80,7 +80,7 @@ git clone https://github.com/W3967/dsh-comfyui-panel.git
 ```yaml
 - insert:
     - id: krea2
-      name: dsh-comfyui-panel
+      name: dsh-workflow-form
       config:
         comfyUrl: 'http://127.0.0.1:8188'
         comfyRoot: 'D:\AI\ComfyUI\ComfyUI_windows_portable\ComfyUI'
@@ -189,7 +189,7 @@ git clone https://github.com/W3967/dsh-comfyui-panel.git
 ## 架构
 
 ```
-comfyui-panel/
+workflow-form/
 ├── index.js              Host 半：组装设置、预设存储、路由、工具
 ├── lib/
 │   ├── comfy.js          ComfyUI HTTP 客户端（不含任何节点图）
@@ -261,7 +261,7 @@ git init
 git add -A
 git commit -m "feat: generic ComfyUI front end for DeepSeek Harness"
 
-git remote add origin https://github.com/W3967/dsh-comfyui-panel.git
+git remote add origin https://github.com/W3967/dsh-workflow-form.git
 git branch -M main
 git push -u origin main
 ```
