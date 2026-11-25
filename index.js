@@ -1,11 +1,16 @@
 /**
- * Host half of dsh-krea2-panel.
+ * Host half of dsh-workflow-form.
  *
  * Owns the `/krea2/*` HTTP surface the browser panel calls: ComfyUI status, the
  * workflow presets and their discovered parameters, generation jobs, and image
  * bytes. Also registers the agent tools, which drive the same job queue.
  *
- * @module dsh-krea2-panel
+ * Note: the `/krea2` route prefix, `krea2` plugin id, agent tool names and the
+ * local `krea2-panel` data directory are retained for backward compatibility.
+ * They are historical identifiers; the plugin itself is generic and not
+ * restricted to Krea 2 workflows.
+ *
+ * @module dsh-workflow-form
  */
 
 import { createJobs } from './lib/jobs.js'

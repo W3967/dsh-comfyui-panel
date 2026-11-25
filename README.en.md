@@ -186,6 +186,19 @@ Same backend, two front ends. **Install one, not both:**
 
 Installing both leaves two near-identical capabilities in the tool list, the model picks either at random, and both fight over the GPU. Inside DSH the plugin is enough.
 
+## Naming and compatibility
+
+| Identifier | Current value | Notes |
+|---|---|---|
+| Repository / package name | `dsh-workflow-form` | Current external name; matches `name` in `package.json`. |
+| Historical names | `dsh-comfyui-panel`, `krea2-panel` | Earlier repository and module names; old README links may still refer to them. |
+| Route prefix | `/krea2/*` | Retained for backward compatibility; it does not mean the plugin is Krea 2 only. |
+| Agent tools | `krea2_workflows`, `krea2_generate` | Names are unchanged; they work against any imported workflow. |
+| Plugin id | `krea2` (in `cordis.patch.yml`) | Historical compatibility id. Do not change it on existing profiles, or local settings and presets stop resolving. |
+| Local data directory | `~/.dsh/krea2-panel` | Historical directory name; settings, presets and parameter values keep living here. |
+
+The built-in presets are Krea 2, but parameter discovery and form generation target any API-format workflow in ComfyUI. The `krea2` prefix is only a leftover from early naming.
+
 ## Architecture
 
 ```

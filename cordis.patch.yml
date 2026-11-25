@@ -2,6 +2,10 @@
 # `config` seeds the settings before the panel saves anything; values saved
 # from the panel take precedence. Point `comfyRoot` at the ComfyUI directory
 # that holds `models/`, `input/` and `output/`.
+#
+# `id: krea2` is a historical compatibility identifier. Keep it unchanged in
+# existing profiles so saved settings, presets and the local data directory keep
+# resolving; do not treat the retained `krea2` prefix as a Krea 2-only scope.
 - insert:
     - id: krea2
       name: dsh-workflow-form
